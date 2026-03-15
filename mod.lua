@@ -75,7 +75,7 @@ for i = 1, 32 do evt_denom_names[i] = tostring(i); evt_denom_values[i] = i end
 
 local event_action_names = {
     "off","flip pans","mute send","mute taps","all fb min",
-    "all fb max","stability +5%","stability +10%","stability +25%"
+    "all fb max","stability -5%","stability -10%","stability -25%"
 }
 
 -- formatters for integer params with units
@@ -310,9 +310,9 @@ local function evt_do()
     elseif a == 4 then for i=1,4 do send("level"..i, 0) end                -- mute taps
     elseif a == 5 then for i=1,4 do send("feedback"..i, 0) end             -- all fb min
     elseif a == 6 then for i=1,4 do send("feedback"..i, FEEDBACK_MAX) end  -- all fb max
-    elseif a == 7 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 5)
-    elseif a == 8 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 10)
-    elseif a == 9 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 25)
+    elseif a == 7 then event_state.saved_stab = turing.stability; turing.stability = math.max(0, turing.stability - 5)
+    elseif a == 8 then event_state.saved_stab = turing.stability; turing.stability = math.max(0, turing.stability - 10)
+    elseif a == 9 then event_state.saved_stab = turing.stability; turing.stability = math.max(0, turing.stability - 25)
     end
     mark_ids(evt_action_param_ids[a])
 end
@@ -608,7 +608,7 @@ function FxLlll:add_params()
     -- every x/y do z --
     params:add_separator("fx_ll_evt", "every x/y do z")
 
-    params:add_option("fx_ll_evt_action", "temporary action", event_action_names, 1)
+    params:add_option("fx_ll_evt_action", "temp action", event_action_names, 1)
     params:set_action("fx_ll_evt_action", function(v)
         if event_state.active then evt_undo(); event_state.active = false end
         event_state.action = v
