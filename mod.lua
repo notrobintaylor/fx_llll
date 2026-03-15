@@ -483,14 +483,14 @@ function FxLlll:add_params()
     end)
 
     params:add_control("fx_ll_filter_freq", "frequency",
-        controlspec.new(20, 20000, 'exp', 0, 2500, "hz"))
+        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"))
     params:set_action("fx_ll_filter_freq", function(v)
         base.filterFreq = v
         if not (tm_active() and turing.target == TARGET.FILTER) then send("filterFreq", v) end
     end)
 
     params:add_control("fx_ll_filter_freq_bottom", "frequency bottom",
-        controlspec.new(20, 20000, 'exp', 0, 250, "hz"))
+        controlspec.new(20, 20000, 'exp', 1, 250, "hz"))
     params:set_action("fx_ll_filter_freq_bottom", function(v)
         base.filterFreqBottom = v
         if v > base.filterFreqTop then params:set("fx_ll_filter_freq_top", v) end
@@ -498,7 +498,7 @@ function FxLlll:add_params()
     end)
 
     params:add_control("fx_ll_filter_freq_top", "frequency top",
-        controlspec.new(20, 20000, 'exp', 0, 2500, "hz"))
+        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"))
     params:set_action("fx_ll_filter_freq_top", function(v)
         base.filterFreqTop = v
         if v < base.filterFreqBottom then params:set("fx_ll_filter_freq_bottom", v) end
@@ -535,9 +535,6 @@ function FxLlll:add_params()
 
     -- modulation™ --
     params:add_separator("fx_ll_tm", "modulation\u{2122}")
-
-    params:add_number("fx_ll_tm_step_stab", "step stability", 0, 100, 50, fmt_pct)
-    params:set_action("fx_ll_tm_step_stab", function(v) turing.stability = v end)
 
     params:add_option("fx_ll_tm_mod_assign", "mod assign", target_names, TARGET.SUBDIV)
     params:set_action("fx_ll_tm_mod_assign", function(v)
@@ -577,6 +574,9 @@ function FxLlll:add_params()
         turing.clock_div = v
         if tm_active() then start_tm_clock() end
     end)
+
+    params:add_number("fx_ll_tm_step_stab", "step stability", 0, 100, 50, fmt_pct)
+    params:set_action("fx_ll_tm_step_stab", function(v) turing.stability = v end)
 
     params:add_option("fx_ll_tm_steps", "steps", steps_names, 1)
     params:set_action("fx_ll_tm_steps", function(v)
