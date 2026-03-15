@@ -82,8 +82,10 @@ local function fmt_pct(param) return param:get() .. " %" end
 local function fmt_ms(param) return param:get() .. " ms" end
 local function fmt_hz(param)
     local v = param:get()
-    if v == math.floor(v) then return string.format("%d hz", v)
+    if v >= 1000 then return string.format("%d hz", math.floor(v + 0.5))
+    elseif v >= 100 then return string.format("%d hz", math.floor(v + 0.5))
     elseif v >= 10 then return string.format("%.1f hz", v)
+    elseif v >= 1 then return string.format("%.2f hz", v)
     else return string.format("%.2f hz", v) end
 end
 
@@ -489,14 +491,14 @@ function FxLlll:add_params()
     end)
 
     params:add_control("fx_ll_filter_freq", "frequency",
-        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"), fmt_hz)
+        controlspec.new(20, 20000, 'exp', 0, 2500, "hz"), fmt_hz)
     params:set_action("fx_ll_filter_freq", function(v)
         base.filterFreq = v
         if not (tm_active() and turing.target == TARGET.FILTER) then send("filterFreq", v) end
     end)
 
     params:add_control("fx_ll_filter_freq_bottom", "frequency bottom",
-        controlspec.new(20, 20000, 'exp', 1, 250, "hz"), fmt_hz)
+        controlspec.new(20, 20000, 'exp', 0, 250, "hz"), fmt_hz)
     params:set_action("fx_ll_filter_freq_bottom", function(v)
         base.filterFreqBottom = v
         if v > base.filterFreqTop then params:set("fx_ll_filter_freq_top", v) end
@@ -504,7 +506,7 @@ function FxLlll:add_params()
     end)
 
     params:add_control("fx_ll_filter_freq_top", "frequency top",
-        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"), fmt_hz)
+        controlspec.new(20, 20000, 'exp', 0, 2500, "hz"), fmt_hz)
     params:set_action("fx_ll_filter_freq_top", function(v)
         base.filterFreqTop = v
         if v < base.filterFreqBottom then params:set("fx_ll_filter_freq_bottom", v) end
@@ -592,10 +594,10 @@ function FxLlll:add_params()
         else if was then tm_deactivate() end end
     end)
 
-    -- every x/y temporary do z --
-    params:add_separator("fx_ll_evt", "every x/y temporary do z")
+    -- every x/y do z --
+    params:add_separator("fx_ll_evt", "every x/y do z")
 
-    params:add_option("fx_ll_evt_action", "action", event_action_names, 1)
+    params:add_option("fx_ll_evt_action", "temporary action", event_action_names, 1)
     params:set_action("fx_ll_evt_action", function(v)
         if event_state.active then evt_undo(); event_state.active = false end
         event_state.action = v
