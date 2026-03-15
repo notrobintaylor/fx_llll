@@ -39,7 +39,7 @@ local FxLlll = fx:new{ subpath = "/fx_llll" }
 -- =========================================================================
 
 local MAX_DELAY = 1
-local FEEDBACK_MAX = 1.05  -- 105%
+local FEEDBACK_MAX = 1.05
 
 local subdiv_names = {"1/1","1/2","1/4","1/8","1/16","1/32","1/64"}
 local subdiv_beats = {4, 2, 1, 0.5, 0.25, 0.125, 0.0625}
@@ -50,8 +50,8 @@ local feel_mults = {1.0, 1.5, 2/3}
 local filter_type_names = {"low", "band", "high"}
 local filter_slope_names = {"6 dB", "12 dB", "24 dB", "48 dB"}
 
-local mod_rate_names = {"1/1","1/2","1/4","1/8","1/16"}
-local mod_rate_beats = {4, 2, 1, 0.5, 0.25}
+local step_rate_names = {"1/1","1/2","1/4","1/8","1/16"}
+local step_rate_beats = {4, 2, 1, 0.5, 0.25}
 
 local TARGET = {
     CHORUS_DEPTH=1, CHORUS_RATE=2, FEEDBACK=3, FILTER=4,
@@ -66,14 +66,55 @@ local target_names = {
 
 local dir_names = {"+", "-", "+ & -"}
 
-local event_rate_names = {
-    "8/1","4/1","2/1","1/1","1/2","1/4","1/8","1/16","1/32","1/64"
-}
-local event_rate_beats = {32, 16, 8, 4, 2, 1, 0.5, 0.25, 0.125, 0.0625}
+local steps_names = {"off"}
+for i = 1, 16 do steps_names[i + 1] = tostring(i) end
+
+local evt_denom_names = {"1","2","4","8","16","32","64"}
+local evt_denom_values = {1, 2, 4, 8, 16, 32, 64}
+
 local event_action_names = {
     "nothing","flip pans","mute taps","all fb min",
     "all fb max","change -5%","change -10%","change -25%"
 }
+
+-- formatters for integer params with units
+local function fmt_pct(param) return param:get() .. " %" end
+local function fmt_ms(param) return param:get() .. " ms" end
+
+-- =========================================================================
+-- (M) marker system
+-- =========================================================================
+
+local target_param_ids = {}
+local original_names = {}
+
+local function mark_modulated(target)
+    local ids = target_param_ids[target]
+    if not ids then return end
+    for _, id in ipairs(ids) do
+        local idx = params.lookup[id]
+        if idx then
+            local p = params.params[idx]
+            if not original_names[id] then original_names[id] = p.name end
+            if not string.find(p.name, "%(M%)") then
+                p.name = "(M) " .. original_names[id]
+            end
+        end
+    end
+    _menu.rebuild_params()
+end
+
+local function unmark_modulated(target)
+    local ids = target_param_ids[target]
+    if not ids then return end
+    for _, id in ipairs(ids) do
+        local idx = params.lookup[id]
+        if idx and original_names[id] then
+            params.params[idx].name = original_names[id]
+        end
+    end
+    _menu.rebuild_params()
+end
 
 -- =========================================================================
 -- state
@@ -86,7 +127,8 @@ local turing = {
 }
 
 local event_state = {
-    active=false, clock_id=nil, action=1, rate=4,
+    active=false, clock_id=nil, action=1,
+    every=1, denom=4,
     saved_prob=0,
 }
 
@@ -126,19 +168,18 @@ local function tap_mod(i)
     return r / m
 end
 
+--- modulation math: max swing = ±100% of base value, clamped to limits
 local function apply_mod(raw, bv, lo, hi)
     local d = turing.depth / 100
     local dir = turing.direction
-    if dir == 1 then return bv + (hi - bv) * raw * d
-    elseif dir == -1 then return bv - (bv - lo) * raw * d
+    local swing = bv * raw * d
+    if dir == 1 then return math.max(lo, math.min(hi, bv + swing))
+    elseif dir == -1 then return math.max(lo, math.min(hi, bv - swing))
     else
         local bp = (raw * 2 - 1) * d
-        if bp >= 0 then return bv + (hi - bv) * bp
-        else return bv + (bv - lo) * bp end
+        return math.max(lo, math.min(hi, bv + bv * bp))
     end
 end
-
-local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
 -- =========================================================================
 -- delay time
@@ -186,16 +227,14 @@ local function restore(t)
         send("filterFreq", base.filterFreq)
         send("filterFreqBottom", base.filterFreqBottom)
         send("filterFreqTop", base.filterFreqTop)
-    elseif t == TARGET.FEEDBACK then
-        for i=1,4 do send("feedback"..i, base["feedback"..i]) end
-    elseif t == TARGET.TAP_LEVEL then
-        for i=1,4 do send("level"..i, base["level"..i]) end
-    elseif t == TARGET.TAP_PAN then
-        for i=1,4 do send("pan"..i, base["pan"..i]) end
+    elseif t == TARGET.FEEDBACK then for i=1,4 do send("feedback"..i, base["feedback"..i]) end
+    elseif t == TARGET.TAP_LEVEL then for i=1,4 do send("level"..i, base["level"..i]) end
+    elseif t == TARGET.TAP_PAN then for i=1,4 do send("pan"..i, base["pan"..i]) end
     elseif t == TARGET.CHORUS_DEPTH then send("chorusDepth", base.chorusDepth)
     elseif t == TARGET.CHORUS_RATE then send("chorusRate", base.chorusRate)
     elseif t == TARGET.SATURATION then send("saturation", base.saturation)
     end
+    unmark_modulated(t)
 end
 
 local function tm_apply()
@@ -206,33 +245,21 @@ local function tm_apply()
 
     if t == TARGET.SUBDIV then tm_subdiv(); return end
     if t == TARGET.TAP_TIME then
-        for i=1,4 do
-            send("time"..i, clamp(apply_mod(tap_mod(i), base["time"..i], 0.001, MAX_DELAY), 0.001, MAX_DELAY))
-        end
-    elseif t == TARGET.SEND_LEVEL then
-        send("inputGain", clamp(apply_mod(raw, 1.0, 0, 2.0), 0, 2))
+        for i=1,4 do send("time"..i, apply_mod(tap_mod(i), base["time"..i], 0.001, MAX_DELAY)) end
+    elseif t == TARGET.SEND_LEVEL then send("inputGain", apply_mod(raw, 1.0, 0, 2.0))
     elseif t == TARGET.FILTER then
-        send("filterFreq", clamp(apply_mod(raw, base.filterFreq, 20, 20000), 20, 20000))
-        send("filterFreqBottom", clamp(apply_mod(raw, base.filterFreqBottom, 20, 20000), 20, 20000))
-        send("filterFreqTop", clamp(apply_mod(raw, base.filterFreqTop, 20, 20000), 20, 20000))
+        send("filterFreq", apply_mod(raw, base.filterFreq, 20, 20000))
+        send("filterFreqBottom", apply_mod(raw, base.filterFreqBottom, 20, 20000))
+        send("filterFreqTop", apply_mod(raw, base.filterFreqTop, 20, 20000))
     elseif t == TARGET.FEEDBACK then
-        for i=1,4 do
-            send("feedback"..i, clamp(apply_mod(tap_mod(i), base["feedback"..i], 0, FEEDBACK_MAX), 0, FEEDBACK_MAX))
-        end
+        for i=1,4 do send("feedback"..i, apply_mod(tap_mod(i), base["feedback"..i], 0, FEEDBACK_MAX)) end
     elseif t == TARGET.TAP_LEVEL then
-        for i=1,4 do
-            send("level"..i, clamp(apply_mod(tap_mod(i), base["level"..i], 0, 1), 0, 1))
-        end
+        for i=1,4 do send("level"..i, apply_mod(tap_mod(i), base["level"..i], 0, 1)) end
     elseif t == TARGET.TAP_PAN then
-        for i=1,4 do
-            send("pan"..i, clamp(apply_mod(tap_mod(i), base["pan"..i], -1, 1), -1, 1))
-        end
-    elseif t == TARGET.CHORUS_DEPTH then
-        send("chorusDepth", clamp(apply_mod(raw, base.chorusDepth, 0, 100), 0, 100))
-    elseif t == TARGET.CHORUS_RATE then
-        send("chorusRate", clamp(apply_mod(raw, base.chorusRate, 0.01, 10000), 0.01, 10000))
-    elseif t == TARGET.SATURATION then
-        send("saturation", clamp(apply_mod(raw, base.saturation, 0, 1), 0, 1))
+        for i=1,4 do send("pan"..i, apply_mod(tap_mod(i), base["pan"..i], -1, 1)) end
+    elseif t == TARGET.CHORUS_DEPTH then send("chorusDepth", apply_mod(raw, base.chorusDepth, 0, 100))
+    elseif t == TARGET.CHORUS_RATE then send("chorusRate", apply_mod(raw, base.chorusRate, 0.01, 10000))
+    elseif t == TARGET.SATURATION then send("saturation", apply_mod(raw, base.saturation, 0, 1))
     end
 end
 
@@ -250,6 +277,10 @@ end
 -- =========================================================================
 -- event system
 -- =========================================================================
+
+local function evt_beats()
+    return event_state.every * (4 / evt_denom_values[event_state.denom])
+end
 
 local function evt_do()
     local a = event_state.action
@@ -278,7 +309,7 @@ local function start_evt_clock()
     if event_state.action == 1 then return end
     event_state.clock_id = clock.run(function()
         while true do
-            clock.sync(event_rate_beats[event_state.rate])
+            clock.sync(evt_beats())
             if event_state.active then evt_undo(); event_state.active = false
             else evt_do(); event_state.active = true end
         end
@@ -293,7 +324,7 @@ local function start_tm_clock()
     if tm_clock_id then clock.cancel(tm_clock_id); tm_clock_id = nil end
     if not tm_active() then return end
     tm_clock_id = clock.run(function()
-        while true do clock.sync(mod_rate_beats[turing.clock_div]); tm_step() end
+        while true do clock.sync(step_rate_beats[turing.clock_div]); tm_step() end
     end)
 end
 
@@ -334,9 +365,7 @@ end
 local function vis_tap(i)
     if params:get("fx_ll_feel_"..i) == 4 then
         params:show("fx_ll_time_"..i); params:hide("fx_ll_subdiv_"..i)
-    else
-        params:hide("fx_ll_time_"..i); params:show("fx_ll_subdiv_"..i)
-    end
+    else params:hide("fx_ll_time_"..i); params:show("fx_ll_subdiv_"..i) end
     _menu.rebuild_params()
 end
 
@@ -363,6 +392,21 @@ local function vis_tm()
 end
 
 -- =========================================================================
+-- tm activation/deactivation
+-- =========================================================================
+
+local function tm_activate()
+    turing.register = math.random(0, reg_max())
+    mark_modulated(turing.target)
+    start_tm_clock()
+end
+
+local function tm_deactivate()
+    restore(turing.target)
+    if tm_clock_id then clock.cancel(tm_clock_id); tm_clock_id = nil end
+end
+
+-- =========================================================================
 -- parameters
 -- =========================================================================
 
@@ -375,35 +419,29 @@ function FxLlll:add_params()
     -- taps --
     params:add_separator("fx_ll_taps", "taps")
 
-    local default_subdivs = {1, 2, 3, 4}  -- 1/1, 1/2, 1/4, 1/8
-    local default_levels = {100, 75, 50, 25}
+    local default_subdivs = {1, 2, 3, 4}
     local default_fb = {50, 50, 50, 50}
+    local default_levels = {100, 75, 50, 25}
     local default_pans = {-0.5, 0.5, -0.5, 0.5}
     local default_msec = {1000, 500, 250, 125}
 
     for i=1,4 do
-        -- feedback (0–105%)
-        params:add_control("fx_ll_feedback_"..i, "tap "..i.." feedback",
-            controlspec.new(0, 105, 'lin', 1, default_fb[i], "%"))
+        -- feedback (0–105%, integer with % unit)
+        params:add_number("fx_ll_feedback_"..i, "tap "..i.." feedback", 0, 105, default_fb[i], fmt_pct)
         params:set_action("fx_ll_feedback_"..i, function(v)
             base["feedback"..i] = v / 100
-            if not (tm_active() and turing.target == TARGET.FEEDBACK) then
-                send("feedback"..i, v / 100)
-            end
+            if not (tm_active() and turing.target == TARGET.FEEDBACK) then send("feedback"..i, v / 100) end
         end)
 
         -- feel
         params:add_option("fx_ll_feel_"..i, "tap "..i.." feel", feel_names, 1)
         params:set_action("fx_ll_feel_"..i, function() vis_tap(i); update_tap(i) end)
 
-        -- level (0–100%)
-        params:add_control("fx_ll_level_"..i, "tap "..i.." level",
-            controlspec.new(0, 100, 'lin', 1, default_levels[i], "%"))
+        -- level (0–100%, integer with % unit)
+        params:add_number("fx_ll_level_"..i, "tap "..i.." level", 0, 100, default_levels[i], fmt_pct)
         params:set_action("fx_ll_level_"..i, function(v)
             base["level"..i] = v / 100
-            if not (tm_active() and turing.target == TARGET.TAP_LEVEL) then
-                send("level"..i, v / 100)
-            end
+            if not (tm_active() and turing.target == TARGET.TAP_LEVEL) then send("level"..i, v / 100) end
         end)
 
         -- pan
@@ -411,37 +449,29 @@ function FxLlll:add_params()
             controlspec.new(-1, 1, 'lin', 0.01, default_pans[i]))
         params:set_action("fx_ll_pan_"..i, function(v)
             base["pan"..i] = v
-            if not (tm_active() and turing.target == TARGET.TAP_PAN) then
-                send("pan"..i, v)
-            end
+            if not (tm_active() and turing.target == TARGET.TAP_PAN) then send("pan"..i, v) end
         end)
 
         -- subdiv
         params:add_option("fx_ll_subdiv_"..i, "tap "..i.." subdiv", subdiv_names, default_subdivs[i])
         params:set_action("fx_ll_subdiv_"..i, function() update_tap(i) end)
 
-        -- time (ms)
-        params:add_control("fx_ll_time_"..i, "tap "..i.." time",
-            controlspec.new(1, 1000, 'exp', 1, default_msec[i], "ms"))
+        -- time (ms, integer with ms unit)
+        params:add_number("fx_ll_time_"..i, "tap "..i.." time", 1, 1000, default_msec[i], fmt_ms)
         params:set_action("fx_ll_time_"..i, function() update_tap(i) end)
     end
 
     -- filter --
     params:add_separator("fx_ll_flt", "filter")
 
-    -- "filter type" sorts first alphabetically in the filter section
     params:add_option("fx_ll_filter_type", "filter type", filter_type_names, 1)
     params:set_action("fx_ll_filter_type", function(v)
         send("filterType", v)
-        -- reset frequency to musical defaults per type
-        if v == 1 then     -- low
-            params:set("fx_ll_filter_freq", 2500)
-        elseif v == 2 then -- band
+        if v == 1 then params:set("fx_ll_filter_freq", 2500)
+        elseif v == 2 then
             params:set("fx_ll_filter_freq_bottom", 250)
             params:set("fx_ll_filter_freq_top", 2500)
-        elseif v == 3 then -- high
-            params:set("fx_ll_filter_freq", 250)
-        end
+        elseif v == 3 then params:set("fx_ll_filter_freq", 250) end
         vis_filter()
     end)
 
@@ -474,8 +504,7 @@ function FxLlll:add_params()
     -- saturation --
     params:add_separator("fx_ll_sat", "saturation")
 
-    params:add_control("fx_ll_saturation", "saturation",
-        controlspec.new(0, 100, 'lin', 1, 0, "%"))
+    params:add_number("fx_ll_saturation", "saturation", 0, 100, 0, fmt_pct)
     params:set_action("fx_ll_saturation", function(v)
         base.saturation = v / 100
         if not (tm_active() and turing.target == TARGET.SATURATION) then send("saturation", v / 100) end
@@ -484,8 +513,7 @@ function FxLlll:add_params()
     -- chorus --
     params:add_separator("fx_ll_ch", "chorus")
 
-    params:add_control("fx_ll_chorus_depth", "depth",
-        controlspec.new(0, 100, 'lin', 1, 0, "%"))
+    params:add_number("fx_ll_chorus_depth", "depth", 0, 100, 0, fmt_pct)
     params:set_action("fx_ll_chorus_depth", function(v)
         base.chorusDepth = v
         if not (tm_active() and turing.target == TARGET.CHORUS_DEPTH) then send("chorusDepth", v) end
@@ -501,20 +529,15 @@ function FxLlll:add_params()
     -- modulation™ --
     params:add_separator("fx_ll_tm", "modulation\u{2122}")
 
-    params:add_control("fx_ll_tm_change_prob", "change probability",
-        controlspec.new(0, 100, 'lin', 1, 50, "%"))
+    params:add_number("fx_ll_tm_change_prob", "change probability", 0, 100, 50, fmt_pct)
     params:set_action("fx_ll_tm_change_prob", function(v) turing.probability = v end)
 
-    -- "mod assign" sorts before "mod bottom/depth/direction" alphabetically
     params:add_option("fx_ll_tm_mod_assign", "mod assign", target_names, TARGET.SUBDIV)
     params:set_action("fx_ll_tm_mod_assign", function(v)
         if tm_active() then restore(turing.prev_target) end
         turing.prev_target = v; turing.target = v
         vis_tm()
-        if tm_active() then
-            turing.register = math.random(0, reg_max())
-            start_tm_clock()
-        end
+        if tm_active() then tm_activate() end
     end)
 
     params:add_option("fx_ll_tm_mod_bottom", "mod bottom", subdiv_names, 3)
@@ -523,8 +546,7 @@ function FxLlll:add_params()
         if turing.range_high < v then turing.range_high = v; params:set("fx_ll_tm_mod_top", v) end
     end)
 
-    params:add_control("fx_ll_tm_mod_depth", "mod depth",
-        controlspec.new(0, 100, 'lin', 1, 100, "%"))
+    params:add_number("fx_ll_tm_mod_depth", "mod depth", 0, 100, 100, fmt_pct)
     params:set_action("fx_ll_tm_mod_depth", function(v) turing.depth = v end)
 
     params:add_option("fx_ll_tm_mod_dir", "mod direction", dir_names, 2)
@@ -534,34 +556,27 @@ function FxLlll:add_params()
         else turing.direction = 0 end
     end)
 
-    params:add_option("fx_ll_tm_mod_rate", "mod rate", mod_rate_names, 3)
-    params:set_action("fx_ll_tm_mod_rate", function(v)
-        turing.clock_div = v
-        if tm_active() then start_tm_clock() end
-    end)
-
     params:add_option("fx_ll_tm_mod_top", "mod top", subdiv_names, 6)
     params:set_action("fx_ll_tm_mod_top", function(v)
         turing.range_high = v
         if turing.range_low > v then turing.range_low = v; params:set("fx_ll_tm_mod_bottom", v) end
     end)
 
-    params:add_control("fx_ll_tm_slew", "slew",
-        controlspec.new(0, 2.0, 'lin', 0.01, 0, "s"))
-    params:set_action("fx_ll_tm_slew", function(v) send("slew", v) end)
+    params:add_number("fx_ll_tm_slew", "slew", 0, 2000, 0, fmt_ms)
+    params:set_action("fx_ll_tm_slew", function(v) send("slew", v / 1000) end)
 
-    params:add_control("fx_ll_tm_steps", "steps",
-        controlspec.new(0, 16, 'lin', 1, 0))
+    params:add_option("fx_ll_tm_step_rate", "step rate", step_rate_names, 3)
+    params:set_action("fx_ll_tm_step_rate", function(v)
+        turing.clock_div = v
+        if tm_active() then start_tm_clock() end
+    end)
+
+    params:add_option("fx_ll_tm_steps", "steps", steps_names, 1)
     params:set_action("fx_ll_tm_steps", function(v)
         local was = tm_active()
-        turing.steps = math.floor(v)
-        if tm_active() then
-            turing.register = math.random(0, reg_max())
-            start_tm_clock()
-        else
-            if was then restore(turing.target) end
-            if tm_clock_id then clock.cancel(tm_clock_id); tm_clock_id = nil end
-        end
+        turing.steps = v - 1  -- index 1 = "off" = 0 steps
+        if tm_active() then tm_activate()
+        else if was then tm_deactivate() end end
     end)
 
     -- every x/y temporary do z --
@@ -574,11 +589,37 @@ function FxLlll:add_params()
         start_evt_clock()
     end)
 
-    params:add_option("fx_ll_evt_rate", "rate", event_rate_names, 4)
-    params:set_action("fx_ll_evt_rate", function(v)
-        event_state.rate = v
+    params:add_number("fx_ll_evt_every", "every", 1, 8, 1)
+    params:set_action("fx_ll_evt_every", function(v)
+        event_state.every = v
         if event_state.action > 1 then start_evt_clock() end
     end)
+
+    params:add_option("fx_ll_evt_of", "of", evt_denom_names, 4)
+    params:set_action("fx_ll_evt_of", function(v)
+        event_state.denom = v
+        if event_state.action > 1 then start_evt_clock() end
+    end)
+
+    -- populate (M) marker map --
+    target_param_ids[TARGET.CHORUS_DEPTH] = {"fx_ll_chorus_depth"}
+    target_param_ids[TARGET.CHORUS_RATE] = {"fx_ll_chorus_rate"}
+    target_param_ids[TARGET.FEEDBACK] = {}
+    target_param_ids[TARGET.FILTER] = {"fx_ll_filter_freq","fx_ll_filter_freq_bottom","fx_ll_filter_freq_top"}
+    target_param_ids[TARGET.SATURATION] = {"fx_ll_saturation"}
+    target_param_ids[TARGET.SEND_LEVEL] = {}
+    target_param_ids[TARGET.SUBDIV] = {}
+    target_param_ids[TARGET.TAP_LEVEL] = {}
+    target_param_ids[TARGET.TAP_PAN] = {}
+    target_param_ids[TARGET.TAP_TIME] = {}
+    for i=1,4 do
+        table.insert(target_param_ids[TARGET.FEEDBACK], "fx_ll_feedback_"..i)
+        table.insert(target_param_ids[TARGET.SUBDIV], "fx_ll_subdiv_"..i)
+        table.insert(target_param_ids[TARGET.TAP_LEVEL], "fx_ll_level_"..i)
+        table.insert(target_param_ids[TARGET.TAP_PAN], "fx_ll_pan_"..i)
+        table.insert(target_param_ids[TARGET.TAP_TIME], "fx_ll_time_"..i)
+        table.insert(target_param_ids[TARGET.TAP_TIME], "fx_ll_subdiv_"..i)
+    end
 
     -- initial visibility --
     for i=1,4 do vis_tap(i) end
@@ -599,7 +640,7 @@ end)
 
 mod.hook.register("script_post_cleanup", "fx llll cleanup", function()
     if event_state.active then evt_undo() end
-    if tm_active() then restore(turing.target) end
+    if tm_active() then tm_deactivate() end
     cleanup()
 end)
 
