@@ -74,7 +74,7 @@ local evt_denom_values = {1, 2, 4, 8, 16, 32, 64}
 
 local event_action_names = {
     "nothing","flip pans","mute taps","all fb min",
-    "all fb max","change -5%","change -10%","change -25%"
+    "all fb max","stability +5%","stability +10%","stability +25%"
 }
 
 -- formatters for integer params with units
@@ -122,14 +122,14 @@ end
 
 local turing = {
     register=0, steps=0, target=TARGET.SUBDIV, prev_target=TARGET.SUBDIV,
-    depth=100, direction=-1, probability=50, clock_div=3,
+    depth=100, direction=-1, stability=50, clock_div=3,
     range_low=3, range_high=6,
 }
 
 local event_state = {
     active=false, clock_id=nil, action=1,
-    every=1, denom=4,
-    saved_prob=0,
+    every=1, denom=4, slew=0,
+    saved_stab=0,
 }
 
 local base = {
@@ -268,9 +268,10 @@ local function tm_step()
     local m = reg_max()
     local msb = (turing.register >> (turing.steps - 1)) & 1
     turing.register = (turing.register << 1) & m
-    if math.random(100) <= turing.probability then
-        turing.register = turing.register | (1 - msb)
-    else turing.register = turing.register | msb end
+    -- stability: 100 = always copy (locked), 0 = always flip (random)
+    if math.random(100) > turing.stability then
+        turing.register = turing.register | (1 - msb)  -- flip (mutate)
+    else turing.register = turing.register | msb end    -- copy (stable)
     tm_apply()
 end
 
@@ -285,23 +286,29 @@ end
 local function evt_do()
     local a = event_state.action
     if a == 1 then return end
+    -- set event slew before action
+    send("slew", event_state.slew / 1000)
     if a == 2 then for i=1,4 do send("pan"..i, -base["pan"..i]) end
     elseif a == 3 then for i=1,4 do send("level"..i, 0) end
     elseif a == 4 then for i=1,4 do send("feedback"..i, 0) end
     elseif a == 5 then for i=1,4 do send("feedback"..i, FEEDBACK_MAX) end
-    elseif a == 6 then event_state.saved_prob = turing.probability; turing.probability = math.max(0, turing.probability - 5)
-    elseif a == 7 then event_state.saved_prob = turing.probability; turing.probability = math.max(0, turing.probability - 10)
-    elseif a == 8 then event_state.saved_prob = turing.probability; turing.probability = math.max(0, turing.probability - 25)
+    elseif a == 6 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 5)
+    elseif a == 7 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 10)
+    elseif a == 8 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 25)
     end
 end
 
 local function evt_undo()
     local a = event_state.action
     if a == 1 then return end
+    -- set event slew for undo transition
+    send("slew", event_state.slew / 1000)
     if a == 2 then for i=1,4 do send("pan"..i, base["pan"..i]) end
     elseif a == 3 then for i=1,4 do send("level"..i, base["level"..i]) end
     elseif a == 4 or a == 5 then for i=1,4 do send("feedback"..i, base["feedback"..i]) end
-    elseif a >= 6 then turing.probability = event_state.saved_prob end
+    elseif a >= 6 then turing.stability = event_state.saved_stab end
+    -- restore TM slew
+    send("slew", params:get("fx_ll_tm_slew") / 1000)
 end
 
 local function start_evt_clock()
@@ -529,8 +536,8 @@ function FxLlll:add_params()
     -- modulation™ --
     params:add_separator("fx_ll_tm", "modulation\u{2122}")
 
-    params:add_number("fx_ll_tm_change_prob", "change probability", 0, 100, 50, fmt_pct)
-    params:set_action("fx_ll_tm_change_prob", function(v) turing.probability = v end)
+    params:add_number("fx_ll_tm_step_stab", "step stability", 0, 100, 50, fmt_pct)
+    params:set_action("fx_ll_tm_step_stab", function(v) turing.stability = v end)
 
     params:add_option("fx_ll_tm_mod_assign", "mod assign", target_names, TARGET.SUBDIV)
     params:set_action("fx_ll_tm_mod_assign", function(v)
@@ -599,6 +606,11 @@ function FxLlll:add_params()
     params:set_action("fx_ll_evt_of", function(v)
         event_state.denom = v
         if event_state.action > 1 then start_evt_clock() end
+    end)
+
+    params:add_number("fx_ll_evt_slew", "slew", 0, 2000, 0, fmt_ms)
+    params:set_action("fx_ll_evt_slew", function(v)
+        event_state.slew = v
     end)
 
     -- populate (M) marker map --
