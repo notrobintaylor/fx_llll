@@ -80,6 +80,12 @@ local event_action_names = {
 -- formatters for integer params with units
 local function fmt_pct(param) return param:get() .. " %" end
 local function fmt_ms(param) return param:get() .. " ms" end
+local function fmt_hz(param)
+    local v = param:get()
+    if v == math.floor(v) then return string.format("%d hz", v)
+    elseif v >= 10 then return string.format("%.1f hz", v)
+    else return string.format("%.2f hz", v) end
+end
 
 -- =========================================================================
 -- (M) marker system
@@ -483,14 +489,14 @@ function FxLlll:add_params()
     end)
 
     params:add_control("fx_ll_filter_freq", "frequency",
-        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"))
+        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"), fmt_hz)
     params:set_action("fx_ll_filter_freq", function(v)
         base.filterFreq = v
         if not (tm_active() and turing.target == TARGET.FILTER) then send("filterFreq", v) end
     end)
 
     params:add_control("fx_ll_filter_freq_bottom", "frequency bottom",
-        controlspec.new(20, 20000, 'exp', 1, 250, "hz"))
+        controlspec.new(20, 20000, 'exp', 1, 250, "hz"), fmt_hz)
     params:set_action("fx_ll_filter_freq_bottom", function(v)
         base.filterFreqBottom = v
         if v > base.filterFreqTop then params:set("fx_ll_filter_freq_top", v) end
@@ -498,7 +504,7 @@ function FxLlll:add_params()
     end)
 
     params:add_control("fx_ll_filter_freq_top", "frequency top",
-        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"))
+        controlspec.new(20, 20000, 'exp', 1, 2500, "hz"), fmt_hz)
     params:set_action("fx_ll_filter_freq_top", function(v)
         base.filterFreqTop = v
         if v < base.filterFreqBottom then params:set("fx_ll_filter_freq_bottom", v) end
@@ -527,14 +533,14 @@ function FxLlll:add_params()
     end)
 
     params:add_control("fx_ll_chorus_rate", "rate",
-        controlspec.new(0.01, 10000, 'exp', 0, 1.0, "hz"))
+        controlspec.new(0.01, 10000, 'exp', 0, 1.0, "hz"), fmt_hz)
     params:set_action("fx_ll_chorus_rate", function(v)
         base.chorusRate = v
         if not (tm_active() and turing.target == TARGET.CHORUS_RATE) then send("chorusRate", v) end
     end)
 
-    -- modulation™ --
-    params:add_separator("fx_ll_tm", "modulation\u{2122}")
+    -- modulation TM --
+    params:add_separator("fx_ll_tm", "modulation TM")
 
     params:add_option("fx_ll_tm_mod_assign", "mod assign", target_names, TARGET.SUBDIV)
     params:set_action("fx_ll_tm_mod_assign", function(v)
