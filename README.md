@@ -38,7 +38,7 @@ input ──> send level ──┬──> line 1 ──> mono ──┐
                                               │
                     ┌─────────────────────────┤
                     │                         │
-    OUTPUT PATH:    │        FEEDBACK PATH:    │
+    OUTPUT PATH:    │        FEEDBACK PATH:   │
       × level × pan → sum     × fb × pan → sum
            │                       │
        filter                    tanh
