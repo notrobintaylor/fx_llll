@@ -69,11 +69,12 @@ local dir_names = {"+", "-", "+ & -"}
 local steps_names = {"off"}
 for i = 1, 16 do steps_names[i + 1] = tostring(i) end
 
-local evt_denom_names = {"1","2","4","8","16","32","64"}
-local evt_denom_values = {1, 2, 4, 8, 16, 32, 64}
+local evt_denom_names = {}
+local evt_denom_values = {}
+for i = 1, 32 do evt_denom_names[i] = tostring(i); evt_denom_values[i] = i end
 
 local event_action_names = {
-    "nothing","flip pans","mute taps","all fb min",
+    "off","flip pans","mute send","mute taps","all fb min",
     "all fb max","stability +5%","stability +10%","stability +25%"
 }
 
@@ -96,8 +97,7 @@ end
 local target_param_ids = {}
 local original_names = {}
 
-local function mark_modulated(target)
-    local ids = target_param_ids[target]
+local function mark_ids(ids)
     if not ids then return end
     for _, id in ipairs(ids) do
         local idx = params.lookup[id]
@@ -112,8 +112,7 @@ local function mark_modulated(target)
     _menu.rebuild_params()
 end
 
-local function unmark_modulated(target)
-    local ids = target_param_ids[target]
+local function unmark_ids(ids)
     if not ids then return end
     for _, id in ipairs(ids) do
         local idx = params.lookup[id]
@@ -122,6 +121,14 @@ local function unmark_modulated(target)
         end
     end
     _menu.rebuild_params()
+end
+
+local function mark_modulated(target)
+    mark_ids(target_param_ids[target])
+end
+
+local function unmark_modulated(target)
+    unmark_ids(target_param_ids[target])
 end
 
 -- =========================================================================
@@ -291,32 +298,36 @@ local function evt_beats()
     return event_state.every * (4 / evt_denom_values[event_state.denom])
 end
 
+-- event action → affected param IDs (populated after params are added)
+local evt_action_param_ids = {}
+
 local function evt_do()
     local a = event_state.action
-    if a == 1 then return end
-    -- set event slew before action
+    if a == 1 then return end  -- off
     send("slew", event_state.slew / 1000)
-    if a == 2 then for i=1,4 do send("pan"..i, -base["pan"..i]) end
-    elseif a == 3 then for i=1,4 do send("level"..i, 0) end
-    elseif a == 4 then for i=1,4 do send("feedback"..i, 0) end
-    elseif a == 5 then for i=1,4 do send("feedback"..i, FEEDBACK_MAX) end
-    elseif a == 6 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 5)
-    elseif a == 7 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 10)
-    elseif a == 8 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 25)
+    if a == 2 then for i=1,4 do send("pan"..i, -base["pan"..i]) end       -- flip pans
+    elseif a == 3 then send("inputGain", 0)                                 -- mute send
+    elseif a == 4 then for i=1,4 do send("level"..i, 0) end                -- mute taps
+    elseif a == 5 then for i=1,4 do send("feedback"..i, 0) end             -- all fb min
+    elseif a == 6 then for i=1,4 do send("feedback"..i, FEEDBACK_MAX) end  -- all fb max
+    elseif a == 7 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 5)
+    elseif a == 8 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 10)
+    elseif a == 9 then event_state.saved_stab = turing.stability; turing.stability = math.min(100, turing.stability + 25)
     end
+    mark_ids(evt_action_param_ids[a])
 end
 
 local function evt_undo()
     local a = event_state.action
-    if a == 1 then return end
-    -- set event slew for undo transition
+    if a == 1 then return end  -- off
     send("slew", event_state.slew / 1000)
-    if a == 2 then for i=1,4 do send("pan"..i, base["pan"..i]) end
-    elseif a == 3 then for i=1,4 do send("level"..i, base["level"..i]) end
-    elseif a == 4 or a == 5 then for i=1,4 do send("feedback"..i, base["feedback"..i]) end
-    elseif a >= 6 then turing.stability = event_state.saved_stab end
-    -- restore TM slew
-    send("slew", params:get("fx_ll_tm_slew") / 1000)
+    if a == 2 then for i=1,4 do send("pan"..i, base["pan"..i]) end        -- flip pans
+    elseif a == 3 then send("inputGain", base.inputGain)                    -- mute send
+    elseif a == 4 then for i=1,4 do send("level"..i, base["level"..i]) end -- mute taps
+    elseif a == 5 or a == 6 then for i=1,4 do send("feedback"..i, base["feedback"..i]) end
+    elseif a >= 7 then turing.stability = event_state.saved_stab end
+    unmark_ids(evt_action_param_ids[a])
+    send("slew", params:get("fx_ll_tm_slew_rate") / 1000)
 end
 
 local function start_evt_clock()
@@ -574,8 +585,8 @@ function FxLlll:add_params()
         if turing.range_low > v then turing.range_low = v; params:set("fx_ll_tm_mod_bottom", v) end
     end)
 
-    params:add_number("fx_ll_tm_slew", "slew", 0, 2000, 0, fmt_ms)
-    params:set_action("fx_ll_tm_slew", function(v) send("slew", v / 1000) end)
+    params:add_number("fx_ll_tm_slew_rate", "slew rate", 0, 2000, 0, fmt_ms)
+    params:set_action("fx_ll_tm_slew_rate", function(v) send("slew", v / 1000) end)
 
     params:add_option("fx_ll_tm_step_rate", "step rate", step_rate_names, 3)
     params:set_action("fx_ll_tm_step_rate", function(v)
@@ -610,14 +621,14 @@ function FxLlll:add_params()
         if event_state.action > 1 then start_evt_clock() end
     end)
 
-    params:add_option("fx_ll_evt_of", "of", evt_denom_names, 4)
+    params:add_option("fx_ll_evt_of", "of", evt_denom_names, 8)
     params:set_action("fx_ll_evt_of", function(v)
         event_state.denom = v
         if event_state.action > 1 then start_evt_clock() end
     end)
 
-    params:add_number("fx_ll_evt_slew", "slew", 0, 2000, 0, fmt_ms)
-    params:set_action("fx_ll_evt_slew", function(v)
+    params:add_number("fx_ll_evt_slew_rate", "slew rate", 0, 2000, 0, fmt_ms)
+    params:set_action("fx_ll_evt_slew_rate", function(v)
         event_state.slew = v
     end)
 
@@ -640,6 +651,23 @@ function FxLlll:add_params()
         table.insert(target_param_ids[TARGET.TAP_TIME], "fx_ll_time_"..i)
         table.insert(target_param_ids[TARGET.TAP_TIME], "fx_ll_subdiv_"..i)
     end
+
+    -- event action → affected param IDs for (M) markers
+    -- 1=off, 2=flip pans, 3=mute send, 4=mute taps, 5=fb min, 6=fb max, 7/8/9=stability
+    evt_action_param_ids[2] = {}  -- flip pans
+    evt_action_param_ids[3] = {}  -- mute send (no user-facing param)
+    evt_action_param_ids[4] = {}  -- mute taps
+    evt_action_param_ids[5] = {}  -- all fb min
+    evt_action_param_ids[6] = {}  -- all fb max
+    for i=1,4 do
+        table.insert(evt_action_param_ids[2], "fx_ll_pan_"..i)
+        table.insert(evt_action_param_ids[4], "fx_ll_level_"..i)
+        table.insert(evt_action_param_ids[5], "fx_ll_feedback_"..i)
+        table.insert(evt_action_param_ids[6], "fx_ll_feedback_"..i)
+    end
+    evt_action_param_ids[7] = {"fx_ll_tm_step_stab"}
+    evt_action_param_ids[8] = {"fx_ll_tm_step_stab"}
+    evt_action_param_ids[9] = {"fx_ll_tm_step_stab"}
 
     -- initial visibility --
     for i=1,4 do vis_tap(i) end
