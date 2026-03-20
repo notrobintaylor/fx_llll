@@ -16,11 +16,11 @@
 //   OUTPUT PATH:                │   FEEDBACK PATH:   │
 //     Balance2 × level → sum    │   Balance2 × fb → sum
 //              │                │              │
-//       bandpass filter         │     OnePole LP (feedback filter)
+//       bandpass filter         │          tanh limiter
 //        (always-on BP)         │              │
-//              │                │          tanh limiter
-//         saturation            │              │
 //              │                │         LocalOut → back
+//         saturation            │
+//              │                │
 //         chorus                │
 //              │                │
 //             OUT               │
@@ -29,7 +29,7 @@
 // stereo image; position 0 = original, ±1 = hard L/R.
 // Bandpass-only filter: bottom freq + top freq define the window.
 // Bottom=20, Top=20k = bypass. RLPF/RHPF at 12+ dB for resonance.
-// Feedback path has its own OnePole LP for progressive darkening.
+// Feedback path: raw + tanh safety limiter.
 // Crossfeed circulates signal between taps (1↔3, 2↔4).
 // DelayC (cubic interp) + pitchGlide lag = pitch-shifting on time changes.
 // Feedback up to 105% with tanh safety. Max delay 1s. No ext. UGens.
@@ -48,7 +48,6 @@ FxLlll : FxBase {
             filterSlope: 2,
             filterFreqBottom: 20, filterFreqTop: 2500,
             resonance: 1.0,
-            fbFilter: 20000,
             saturation: 0, chorusDepth: 0, chorusRate: 1.0,
             crossfeed: 0,
             pitchGlide: 0.5,
@@ -73,7 +72,6 @@ FxLlll : FxBase {
             var bpC1, bpC2, bp6, bp12, bp24, bp36, bp48;
             var filtered, satDrive, saturated;
             var chMix, chRate, chMod, chDel, chorused;
-            var fbFiltered;
 
             slew = \slew.kr(0);
             pGlide = \pitchGlide.kr(0.5);
@@ -151,12 +149,10 @@ FxLlll : FxBase {
 
             Out.ar(outBus, chorused);
 
-            // ---- FEEDBACK PATH (with OnePole feedback filter) ----
+            // ---- FEEDBACK PATH (raw + tanh safety limiter) ----
             fbSum = (b1*fb1) + (b2*fb2) + (b3*fb3) + (b4*fb4);
-            fbFiltered = OnePole.ar(fbSum,
-                (-2pi * (\fbFilter.kr(20000).lag(slew) / SampleRate.ir)).exp);
 
-            LocalOut.ar(fbFiltered.tanh);
+            LocalOut.ar(fbSum.tanh);
         }).add;
     }
 }
