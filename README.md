@@ -8,6 +8,8 @@ Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod-framework/).
 
 No external UGens required.
 
+---
+
 ## How it got here
 
 fx_llll didn't start as fx_llll. I started with a port of justmat's Greyhole reverb script into the fx mod framework – an exercise in understanding how mods work, how SuperCollider talks to Lua via OSC, and where the audio actually goes. That port worked. Then came a Pools port. That worked too. Then the question became: what if instead of porting someone else's effect, I design one from scratch?
@@ -25,6 +27,8 @@ The filter and processing chain originally lived in the feedback path – meanin
 The move to a full stereo signal path came from a simple realization: the delay lines were already running on stereo input, then immediately collapsing to mono and re-panning. That's destroying information you already paid the CPU for. Now the entire path – from delay through crossfeed through balance through feedback – stays stereo. Balance at 0 means "pass the original stereo image through unchanged." The input's spatial character survives into every echo.
 
 The name came last. Four l's. Four lines. Four delay lines. And four vertical strokes that look like a waveform, or like the bars of a delay visualization, or like nothing at all – depending on how you look at them.
+
+---
 
 ## Install
 
@@ -87,6 +91,8 @@ The entire signal path is stereo – no mono collapse at any point. `Balance2` p
 The output path carries every echo through a bandpass filter, saturation, and chorus – so the first repetition already has full character. The feedback path has its own OnePole lowpass that darkens each repetition progressively – the tenth echo is a ghost of the first, like worn tape. A tanh safety limiter soft-clips when feedback exceeds unity gain.
 
 When delay times change – whether you turn an encoder, switch subdivisions, or the shift register mutates – you hear pitch sweep as the lines catch up. The **pitch glide** parameter controls this transition time (0–250 ms). The Turing Machine exploits this: target "tap time" and listen to the lines pitch-shift in evolving patterns.
+
+---
 
 ## Parameters
 
@@ -184,7 +190,7 @@ Set **steps > 0** to activate. Some parameters are conditionally visible dependi
 | **mod depth** | 0–100 | % | 100 | not note div |
 | **mod direction** | + / - / + & - | – | - | not note div |
 | **mod top** | 1/1–1/64 | – | 1/32 | note div only |
-| **pitch glide** | 0–250 | ms | 100 | always |
+| **pitch glide** | 0–2500 | ms | 500 | always |
 | **slew rate** | 0–2000 | ms | 0 | always |
 | **step rate** | 4/1–1/16 | – | 1/4 | always |
 | **step stability** | 0–100 | % | 50 | always |
@@ -195,7 +201,7 @@ Set **steps > 0** to activate. Some parameters are conditionally visible dependi
 
 **mod direction** offers three modes: **+** (high register value pushes the parameter up), **-** (high register value pushes it down), and **+ & -** (bipolar – the register swings both ways from the base value).
 
-**pitch glide** controls the transition time when delay times change. At 100 ms (default), you get smooth tape-speed pitch shifts. At 0 ms, changes are instant (clicks possible). This applies to all delay time changes, not just TM modulation.
+**pitch glide** controls the transition time when delay times change. At 500 ms (default), time changes produce audible tape-speed pitch shifts – the buffer content plays back faster or slower as the read head catches up. Lower values make the transition quicker and more abrupt. Higher values stretch it out into subtle, long detuning. At 0 ms, changes are instant (clicks possible). This applies to all delay time changes, not just TM modulation.
 
 **step rate** now includes slower rates: **4/1** and **2/1**. At 60 BPM, 4/1 means one TM step every 16 seconds – the register shifts at geological speed.
 
@@ -255,6 +261,8 @@ Parameters affected by an active event are marked with **(M)** in the parameter 
 - **stability -5% / -10% / -25%** – temporarily reduces the shift register's step stability, injecting more randomness into the TM pattern. Reverts on undo. (M) on: step stability.
 - **flip levels** – mirrors each tap's level around 50%: a tap at 25% becomes 75%, at 100% becomes 0%, at 50% stays put. Self-undoing (flip twice = original). Inverts the volume hierarchy – quiet background taps become foreground and vice versa. (M) on: tap 1–4 level.
 
+---
+
 ## Recipes
 
 **Ambient wash.** Active taps = 4. All four lines in note mode: 1/1, 1/2, 1/4, 1/8. Frequency bottom = 20 hz, top = 1500 hz, slope = 24 dB. Saturation = 15%. Feedback at 40% per line. Chorus depth = 15%, rate = 0.2 hz. Play sparse notes and let the echoes build into a bed.
@@ -277,6 +285,8 @@ Parameters affected by an active event are marked with **(M)** in the parameter 
 
 **Crossfeed conversation.** Active taps = 4. All lines at 1/4, 1/8, 1/16, 1/32. Crossfeed = 30%, feedback = 35% per line. The signal circulates between paired taps, creating patterns denser than any single delay. Lower the feedback filter to 2000 hz and the conversation gets progressively murkier with each exchange.
 
+---
+
 ## Safety
 
 fx_llll allows per-line feedback up to 105% – above unity gain. This means the signal grows with each repetition. The tanh limiter in the feedback path prevents digital clipping, but the resulting audio can still be extremely loud and spectrally dense.
@@ -294,6 +304,8 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Be cautious with crossfeed.** Crossfeed at 50% with feedback at 50% produces more total feedback energy than you might expect. Start crossfeed low.
 - **Protect your hearing.** This is not a disclaimer for legal purposes. It's genuine advice from someone who has startled himself more than once with this effect.
 
+---
+
 ## Known issues
 
 - **Send A/B routing** may not produce audible output depending on the host script's audio routing. This is a limitation of the fx mod framework's send bus architecture, not an fx_llll bug. Use insert mode for reliable operation.
@@ -301,9 +313,13 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Filter CPU at 48 dB:** The bandpass at 48 dB runs four cascaded RLPF + RHPF stages. Combined with the feedback filter, this is the most CPU-intensive configuration. If CPU is tight, use 6 or 12 dB.
 - **Crossfeed + high feedback** can produce rapid, loud self-oscillation that the tanh limiter catches but doesn't silence. This is by design, but it can surprise you.
 
+---
+
 ## Dependencies
 
 - [fx mod framework](https://llllllll.co/t/fx-mod-framework/)
+
+---
 
 ## Credits
 
