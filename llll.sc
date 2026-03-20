@@ -51,7 +51,7 @@ FxLlll : FxBase {
             fbFilter: 20000,
             saturation: 0, chorusDepth: 0, chorusRate: 1.0,
             crossfeed: 0,
-            pitchGlide: 0.1,
+            pitchGlide: 0.5,
             slew: 0,
         ), nil, 0.5);
         ^ret;
@@ -76,7 +76,7 @@ FxLlll : FxBase {
             var fbFiltered;
 
             slew = \slew.kr(0);
-            pGlide = \pitchGlide.kr(0.1);
+            pGlide = \pitchGlide.kr(0.5);
             input = In.ar(inBus, 2) * \inputGain.kr(1.0).lag(slew);
             fb = LocalIn.ar(2);
             source = input + fb;
