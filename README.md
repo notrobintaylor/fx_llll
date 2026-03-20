@@ -180,7 +180,6 @@ Set **steps > 0** to activate. Some parameters are conditionally visible dependi
 
 | Parameter | Range | Unit | Default | Visibility |
 |-----------|-------|------|---------|------------|
-| **steps** | off / 1–16 | – | off | always |
 | **assign target** | 12 targets | – | time div | always |
 | **mod bottom** | 1/1–1/64 | – | 1/4 | time div only |
 | **mod depth** | 0–100 | % | 100 | not time div |
@@ -190,6 +189,7 @@ Set **steps > 0** to activate. Some parameters are conditionally visible dependi
 | **slew rate** | 0–2000 | ms | 0 | not time div or tap time |
 | **step rate** | 4/1–1/16 | – | 1/4 | always |
 | **step stability** | 0–100 | % | 50 | always |
+| **steps** | off / 1–16 | – | off | always |
 
 **step stability** controls how much the pattern mutates. At 100%, the pattern is completely locked – it repeats exactly every N steps (where N = register length). At 0%, every step is fully random. The interesting territory is in between: at 50%, the pattern is recognizable but slowly drifting, like a musician who keeps almost-but-not-quite playing the same phrase.
 
