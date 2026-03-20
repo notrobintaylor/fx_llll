@@ -645,7 +645,7 @@ function FxLlll:add_params()
         if turing.range_low > v then turing.range_low = v; params:set("fx_ll_tm_mod_bottom", v) end
     end)
 
-    params:add_number("fx_ll_tm_pitch_glide", "pitch glide", 0, 250, 100, fmt_ms)
+    params:add_number("fx_ll_tm_pitch_glide", "pitch glide", 0, 2500, 500, fmt_ms)
     params:set_action("fx_ll_tm_pitch_glide", function(v) send("pitchGlide", v / 1000) end)
 
     params:add_number("fx_ll_tm_slew_rate", "slew rate", 0, 2000, 0, fmt_ms)
