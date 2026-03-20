@@ -16,7 +16,7 @@
 //   OUTPUT PATH:                │   FEEDBACK PATH:   │
 //     Balance2 × level → sum    │   Balance2 × fb → sum
 //              │                │              │
-//       bandpass filter         │     OnePole LP (darkening)
+//       bandpass filter         │     OnePole LP (feedback filter)
 //        (always-on BP)         │              │
 //              │                │          tanh limiter
 //         saturation            │              │
@@ -29,7 +29,7 @@
 // stereo image; position 0 = original, ±1 = hard L/R.
 // Bandpass-only filter: bottom freq + top freq define the window.
 // Bottom=20, Top=20k = bypass. RLPF/RHPF at 12+ dB for resonance.
-// Feedback path has its own OnePole LP for accumulating darkness.
+// Feedback path has its own OnePole LP for progressive darkening.
 // Crossfeed circulates signal between taps (1↔3, 2↔4).
 // DelayC (cubic interp) + pitchGlide lag = pitch-shifting on time changes.
 // Feedback up to 105% with tanh safety. Max delay 1s. No ext. UGens.
@@ -46,12 +46,12 @@ FxLlll : FxBase {
             activeTaps: 1,
             inputGain: 1.0,
             filterSlope: 2,
-            filterFreqBottom: 20, filterFreqTop: 20000,
+            filterFreqBottom: 20, filterFreqTop: 2500,
             resonance: 1.0,
-            fbFilterFreq: 6000,
+            fbFilter: 20000,
             saturation: 0, chorusDepth: 0, chorusRate: 1.0,
             crossfeed: 0,
-            pitchGlide: 0.2,
+            pitchGlide: 0.1,
             slew: 0,
         ), nil, 0.5);
         ^ret;
@@ -76,7 +76,7 @@ FxLlll : FxBase {
             var fbFiltered;
 
             slew = \slew.kr(0);
-            pGlide = \pitchGlide.kr(0.2);
+            pGlide = \pitchGlide.kr(0.1);
             input = In.ar(inBus, 2) * \inputGain.kr(1.0).lag(slew);
             fb = LocalIn.ar(2);
             source = input + fb;
@@ -122,7 +122,7 @@ FxLlll : FxBase {
             // ---- BANDPASS FILTER on output (always-on) ----
             fSlope = \filterSlope.kr(2);
             fBot = \filterFreqBottom.kr(20).lag(slew);
-            fTop = \filterFreqTop.kr(20000).lag(slew);
+            fTop = \filterFreqTop.kr(2500).lag(slew);
             rq = \resonance.kr(1.0).lag(slew);
 
             // 6 dB: OnePole (no resonance)
@@ -151,10 +151,10 @@ FxLlll : FxBase {
 
             Out.ar(outBus, chorused);
 
-            // ---- FEEDBACK PATH (with OnePole darkening filter) ----
+            // ---- FEEDBACK PATH (with OnePole feedback filter) ----
             fbSum = (b1*fb1) + (b2*fb2) + (b3*fb3) + (b4*fb4);
             fbFiltered = OnePole.ar(fbSum,
-                (-2pi * (\fbFilterFreq.kr(6000).lag(slew) / SampleRate.ir)).exp);
+                (-2pi * (\fbFilter.kr(20000).lag(slew) / SampleRate.ir)).exp);
 
             LocalOut.ar(fbFiltered.tanh);
         }).add;
