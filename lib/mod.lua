@@ -669,7 +669,7 @@ function FxLlll:add_params()
         else turing.direction = 0 end
     end)
 
-    params:add_option("fx_ll_tm_mod_target", "mod target", target_names, TARGET.TIME_DIV)
+    params:add_option("fx_ll_tm_mod_target", "assign target", target_names, TARGET.TIME_DIV)
     params:set_action("fx_ll_tm_mod_target", function(v)
         if tm_active() then restore(turing.prev_target) end
         turing.prev_target = v; turing.target = v
@@ -733,7 +733,7 @@ function FxLlll:add_params()
     params:add_number("fx_ll_evt_slew_rate", "slew rate", 0, 2000, 0, fmt_ms)
     params:set_action("fx_ll_evt_slew_rate", function(v) event_state.slew = v end)
 
-    params:add_option("fx_ll_evt_action", "temp action", event_action_names, 1)
+    params:add_option("fx_ll_evt_action", "assign target", event_action_names, 1)
     params:set_action("fx_ll_evt_action", function(v)
         -- undo + force-restore to prevent stale state
         if event_state.active then evt_undo(); event_state.active = false end
