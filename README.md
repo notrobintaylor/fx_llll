@@ -176,12 +176,12 @@ At 0% the four lines are independent. As crossfeed increases, the lines start re
 
 A shift register inspired by Tom Whitwell's [Turing Machine](https://musicthing.co.uk/pages/turing.html). Instead of generating random voltages for a synthesizer, it generates evolving patterns that modulate delay parameters.
 
-Set **steps > 0** to activate. Some parameters are conditionally visible depending on **mod target**.
+Set **steps > 0** to activate. Some parameters are conditionally visible depending on **assign target**.
 
 | Parameter | Range | Unit | Default | Visibility |
 |-----------|-------|------|---------|------------|
 | **steps** | off / 1–16 | – | off | always |
-| **mod target** | 12 targets | – | time div | always |
+| **assign target** | 12 targets | – | time div | always |
 | **mod bottom** | 1/1–1/64 | – | 1/4 | time div only |
 | **mod depth** | 0–100 | % | 100 | not time div |
 | **mod direction** | + / - / + & - | – | - | not time div |
@@ -197,7 +197,7 @@ Set **steps > 0** to activate. Some parameters are conditionally visible dependi
 
 **mod direction** offers three modes: **+** (high register value pushes the parameter up), **-** (high register value pushes it down), and **+ & -** (bipolar – the register swings both ways from the base value).
 
-**pitch glide** controls the transition time when delay times change. At 500 ms (default), time changes produce audible tape-speed pitch shifts – the buffer content plays back faster or slower as the read head catches up. Lower values make the transition quicker and more abrupt. Higher values stretch it out into subtle, long detuning. At 0 ms, changes are instant (clicks possible). Only visible when mod target is **time div** or **tap time** – for all other targets, **slew rate** is shown instead. The two are mutually exclusive because combining pitch glide with parameter slew produces unpredictable interactions.
+**pitch glide** controls the transition time when delay times change. At 500 ms (default), time changes produce audible tape-speed pitch shifts – the buffer content plays back faster or slower as the read head catches up. Lower values make the transition quicker and more abrupt. Higher values stretch it out into subtle, long detuning. At 0 ms, changes are instant (clicks possible). Only visible when assign target is **time div** or **tap time** – for all other targets, **slew rate** is shown instead. The two are mutually exclusive because combining pitch glide with parameter slew produces unpredictable interactions.
 
 **step rate** includes slower rates: **4/1** and **2/1**. At 60 BPM, 4/1 means one TM step every 16 seconds – the register shifts at geological speed.
 
@@ -230,7 +230,7 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 | Parameter | Range | Default |
 |-----------|-------|---------|
-| **temp action** | off / flip balance / mute send / mute taps / all feedback min / all feedback max / stability -5% / -10% / -25% / flip levels | off |
+| **assign target** | off / flip balance / mute send / mute taps / all feedback min / all feedback max / stability -5% / -10% / -25% / flip levels | off |
 | **chance** | off / 1–100% | off |
 | **every** | 1–8 | 1 |
 | **of** | 1–32 | 8 |
@@ -265,19 +265,19 @@ Parameters affected by an active event are marked with **(M)** in the parameter 
 
 **Dub delay.** Active taps = 1. Dotted 1/4, feedback = 60%. Frequency bottom = 20 hz, top = 2000 hz, 12 dB. Saturation = 40%. The classic: sparse phrases with long echoes that fill the space between notes.
 
-**Rhythmic gate.** Active taps = 4. TM steps = 8, mod target = tap level, mod direction = -, mod depth = 100%, step rate = 1/8, slew rate = 0 ms. Four lines stutter independently in a polyrhythmic pattern. Step stability = 20% for slow evolution. Lock it at 100% when you find a good one.
+**Rhythmic gate.** Active taps = 4. TM steps = 8, assign target = tap level, mod direction = -, mod depth = 100%, step rate = 1/8, slew rate = 0 ms. Four lines stutter independently in a polyrhythmic pattern. Step stability = 20% for slow evolution. Lock it at 100% when you find a good one.
 
 **Tape degradation.** Saturation = 50%, frequency bottom = 20 hz, top = 1200 hz, slope = 48 dB. Each repetition sounds darker and grittier. Add chorus depth = 10%, rate = 0.5 hz for wobble.
 
-**Structural rhythm.** Every 1 of 8, temp action = flip balance. Every bar the stereo image mirrors. Combined with the TM on tap levels at a different rate, this creates large-scale rhythmic architecture from two simple mechanisms running at different speeds.
+**Structural rhythm.** Every 1 of 8, assign target = flip balance. Every bar the stereo image mirrors. Combined with the TM on tap levels at a different rate, this creates large-scale rhythmic architecture from two simple mechanisms running at different speeds.
 
 **FM delay.** Chorus rate = 3000 hz, depth = 60%. Frequency bottom = 200 hz, top = 20000 hz to strip the fundamentals. The echoes become metallic, bell-like – pure sidebands. The delay stops sounding like a delay and starts sounding like a synthesizer.
 
-**Controlled chaos.** Active taps = 4. TM steps = 12, mod target = time div, mod bottom = 1/8, mod top = 1/64, step stability = 40%, step rate = 1/4. Every 3 of 7, temp action = stability -25%, chance = 70%, reset after = 8. The four lines constantly shift time divisions. The stability reduction fires unpredictably but resets before it drifts too far.
+**Controlled chaos.** Active taps = 4. TM steps = 12, assign target = time div, mod bottom = 1/8, mod top = 1/64, step stability = 40%, step rate = 1/4. Every 3 of 7, assign target = stability -25%, chance = 70%, reset after = 8. The four lines constantly shift time divisions. The stability reduction fires unpredictably but resets before it drifts too far.
 
 **Slapback + drone.** Active taps = 2. Line 1: feel = msec, time = 80 ms, feedback = 10%, balance = -0.7. A tight slapback on the left. Line 2: feel = note, time div = 1/1, feedback = 90%, balance = 0.7. A slow, self-oscillating drone on the right. Same source signal, two completely different instruments.
 
-**Resonant sweep.** Frequency bottom = 200 hz, top = 800 hz, slope = 24 dB, resonance = 70%. TM steps = 8, mod target = filter, step rate = 1/4, slew rate = 500 ms. Both cutoff edges resonate independently as the TM sweeps the filter window up and down. The bottom edge sings differently from the top.
+**Resonant sweep.** Frequency bottom = 200 hz, top = 800 hz, slope = 24 dB, resonance = 70%. TM steps = 8, assign target = filter frequency, step rate = 1/4, slew rate = 500 ms. Both cutoff edges resonate independently as the TM sweeps the filter window up and down. The bottom edge sings differently from the top.
 
 **Crossfeed conversation.** Active taps = 4. All lines at 1/4, 1/8, 1/16, 1/32. Crossfeed = 30%, feedback = 35% per line. The signal circulates between paired taps, creating patterns denser than any single delay.
 
@@ -296,7 +296,7 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Use a limiter** on the norns output or on the next device in your signal chain.
 - **Start at low volume** when experimenting with high feedback. Self-oscillating delays can build gradually and then suddenly peak.
 - **Saturation helps.** At 20–30%, the tanh waveshaping adds compression that tames peaks.
-- **The event system is your safety net.** Set temp action = "all feedback min" at a slow rate as a periodic reset while exploring extreme settings.
+- **The event system is your safety net.** Set assign target = "all feedback min" at a slow rate as a periodic reset while exploring extreme settings.
 - **Be cautious with crossfeed.** Crossfeed at 50% with feedback at 50% produces more total feedback energy than you might expect. Start crossfeed low.
 - **Protect your hearing.** This is not a disclaimer for legal purposes. It's genuine advice from someone who has startled himself more than once with this effect.
 
