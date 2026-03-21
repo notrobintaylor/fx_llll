@@ -55,6 +55,8 @@ dust/code/fx_llll/
 └── llll.sc
 ```
 
+---
+
 ## Signal flow
 
 ```
@@ -64,7 +66,7 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |                                    |
                          |                          Balance2 (stereo position)
                          |                                    |
-                         |            +- +--+
+                         |            +------- ------+--------+
                          |            |                       |
                          |      feedback path            output path
                          |            |                       |
@@ -74,7 +76,7 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |            |                       |
                          |          tanh                  saturation
                          |            |                       |
-                         ++                    chorus
+                         +------------+                    chorus
                                                               |
                                                              out
 ```
@@ -90,7 +92,7 @@ When delay times change – whether you turn an encoder, switch subdivisions, or
 ### Slot
 
 | Parameter | Options |
-|--||
+|-----------|---------|
 | **slot** | none / send a / send b / insert |
 
 ### Taps
@@ -98,7 +100,7 @@ When delay times change – whether you turn an encoder, switch subdivisions, or
 Select how many lines are active with **active taps** (1–4, default 1). Inactive taps are muted and their parameters hidden. Each active tap has its own feel mode that determines how the delay time is derived. Depending on the feel, either **time div** or **time** is visible.
 
 | Parameter | Range | Unit | Defaults (1 / 2 / 3 / 4) |
-|--|-|||
+|-----------|-------|------|---------------------------|
 | **active taps** | 1–4 | – | 1 |
 | **feel** | note / dotted / triplet / msec | – | note |
 | **time div** | 1/1–1/64 | – | 1/1, 1/2, 1/4, 1/8 |
@@ -120,7 +122,7 @@ Select how many lines are active with **active taps** (1–4, default 1). Inacti
 An always-on bandpass filter in the output path. Every echo passes through it. **Filter type** sets the frequency parameters to common starting points; the two frequency knobs can then be adjusted freely.
 
 | Parameter | Range | Unit | Default |
-|--|-|||
+|-----------|-------|------|---------|
 | **filter type** | low / band / high | – | low |
 | **frequency bottom** | 20–20000 | hz | 20 |
 | **frequency top** | 20–20000 | hz | 2500 |
@@ -138,7 +140,7 @@ Frequency parameters use exponential scaling: fine control at low values, coarse
 ### Saturation
 
 | Parameter | Range | Unit | Default |
-|--|-|||
+|-----------|-------|------|---------|
 | **saturation** | 0–100 | % | 0 |
 
 Tanh soft clipping. At 30% you get warmth. At 70% you get crunch. At 100% you get a wall. Because saturation sits in the output path, even the first echo is affected – you don't need feedback for it to color the sound.
@@ -146,7 +148,7 @@ Tanh soft clipping. At 30% you get warmth. At 70% you get crunch. At 100% you ge
 ### Chorus
 
 | Parameter | Range | Unit | Default |
-|--|-|||
+|-----------|-------|------|---------|
 | **depth** | 0–100 | % | 0 |
 | **rate** | 0.01–10000 | hz | 1.0 |
 
@@ -155,7 +157,7 @@ A delay-line chorus that modulates all echoes. The range is deliberately extreme
 ### Crossfeed
 
 | Parameter | Range | Unit | Default |
-|--|-|||
+|-----------|-------|------|---------|
 | **crossfeed** | 0–100 | % | 0 |
 
 Routes a percentage of each tap's output into its partner: line 1 feeds into line 3, line 2 into line 4, and vice versa. The signal circulates between paired taps, creating feedback paths longer than any individual delay time.
@@ -171,7 +173,7 @@ A shift register inspired by Tom Whitwell's [Turing Machine](https://musicthing.
 Set **steps > 0** to activate. Some parameters are conditionally visible depending on **assign target**.
 
 | Parameter | Range | Unit | Default | Visibility |
-|--|-||||
+|-----------|-------|------|---------|------------|
 | **assign target** | 12 targets | – | time div | always |
 | **mod bottom** | 1/1–1/64 | – | 1/4 | time div only |
 | **mod depth** | 0–100 | % | 100 | not time div |
@@ -200,7 +202,7 @@ Parameters currently being modulated by the TM are marked with **(M)** in the pa
 **Available targets:**
 
 | Target | What it modulates | Per-line? |
-|--|-|--|
+|--------|-------------------|-----------|
 | **chorus depth** | Chorus wet/dry | no |
 | **chorus rate** | Chorus modulation speed | no |
 | **crossfeed** | Crossfeed amount | no |
@@ -221,7 +223,7 @@ For per-line targets, each line reads the shift register from a different bit ro
 Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. A toggle mechanism: every X of Y beats, the action fires. Next X of Y beats, it undoes itself.
 
 | Parameter | Range | Default |
-|--|-||
+|-----------|-------|---------|
 | **assign target** | off / flip balance / mute send / mute taps / all feedback min / all feedback max / stability -5% / -10% / -25% / flip levels | off |
 | **chance** | off / 1–100% | off |
 | **every** | 1–8 | 1 |
