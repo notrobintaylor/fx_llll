@@ -8,8 +8,6 @@ Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod-framework/).
 
 No external UGens required.
 
----
-
 ## How it got here
 
 fx_llll didn't start as fx_llll. I started with a port of justmat's Greyhole reverb script into the fx mod framework – an exercise in understanding how mods work, how SuperCollider talks to Lua via OSC, and where the audio actually goes. That port worked. Then came a Pools port. That worked too. Then the question became: what if instead of porting someone else's effect, I design one from scratch?
@@ -27,8 +25,6 @@ The filter and processing chain originally lived in the feedback path – meanin
 The move to a full stereo signal path came from a simple realization: the delay lines were already running on stereo input, then immediately collapsing to mono and re-panning. That's destroying information you already paid the CPU for. Now the entire path – from delay through crossfeed through balance through feedback – stays stereo. Balance at 0 means "pass the original stereo image through unchanged." The input's spatial character survives into every echo.
 
 The name came last. Four l's. Four lines. Four delay lines. And four vertical strokes that look like a waveform, or like the bars of a delay visualization, or like nothing at all – depending on how you look at them.
-
----
 
 ## Install
 
@@ -59,8 +55,6 @@ dust/code/fx_llll/
 └── llll.sc
 ```
 
----
-
 ## Signal flow
 
 ```
@@ -70,7 +64,7 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |                                    |
                          |                          Balance2 (stereo position)
                          |                                    |
-                         |            +------- ------+--------+
+                         |            +- +--+
                          |            |                       |
                          |      feedback path            output path
                          |            |                       |
@@ -80,7 +74,7 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |            |                       |
                          |          tanh                  saturation
                          |            |                       |
-                         +------------+                    chorus
+                         ++                    chorus
                                                               |
                                                              out
 ```
@@ -91,14 +85,12 @@ The output path carries every echo through a bandpass filter, saturation, and ch
 
 When delay times change – whether you turn an encoder, switch subdivisions, or the shift register mutates – you hear pitch sweep as the lines catch up. The **pitch glide** parameter controls this transition time (0–2500 ms). The Turing Machine exploits this: target "tap time" and listen to the lines pitch-shift in evolving patterns.
 
----
-
 ## Parameters
 
 ### Slot
 
 | Parameter | Options |
-|-----------|---------|
+|--||
 | **slot** | none / send a / send b / insert |
 
 ### Taps
@@ -106,7 +98,7 @@ When delay times change – whether you turn an encoder, switch subdivisions, or
 Select how many lines are active with **active taps** (1–4, default 1). Inactive taps are muted and their parameters hidden. Each active tap has its own feel mode that determines how the delay time is derived. Depending on the feel, either **time div** or **time** is visible.
 
 | Parameter | Range | Unit | Defaults (1 / 2 / 3 / 4) |
-|-----------|-------|------|---------------------------|
+|--|-|||
 | **active taps** | 1–4 | – | 1 |
 | **feel** | note / dotted / triplet / msec | – | note |
 | **time div** | 1/1–1/64 | – | 1/1, 1/2, 1/4, 1/8 |
@@ -128,7 +120,7 @@ Select how many lines are active with **active taps** (1–4, default 1). Inacti
 An always-on bandpass filter in the output path. Every echo passes through it. **Filter type** sets the frequency parameters to common starting points; the two frequency knobs can then be adjusted freely.
 
 | Parameter | Range | Unit | Default |
-|-----------|-------|------|---------|
+|--|-|||
 | **filter type** | low / band / high | – | low |
 | **frequency bottom** | 20–20000 | hz | 20 |
 | **frequency top** | 20–20000 | hz | 2500 |
@@ -146,7 +138,7 @@ Frequency parameters use exponential scaling: fine control at low values, coarse
 ### Saturation
 
 | Parameter | Range | Unit | Default |
-|-----------|-------|------|---------|
+|--|-|||
 | **saturation** | 0–100 | % | 0 |
 
 Tanh soft clipping. At 30% you get warmth. At 70% you get crunch. At 100% you get a wall. Because saturation sits in the output path, even the first echo is affected – you don't need feedback for it to color the sound.
@@ -154,7 +146,7 @@ Tanh soft clipping. At 30% you get warmth. At 70% you get crunch. At 100% you ge
 ### Chorus
 
 | Parameter | Range | Unit | Default |
-|-----------|-------|------|---------|
+|--|-|||
 | **depth** | 0–100 | % | 0 |
 | **rate** | 0.01–10000 | hz | 1.0 |
 
@@ -163,7 +155,7 @@ A delay-line chorus that modulates all echoes. The range is deliberately extreme
 ### Crossfeed
 
 | Parameter | Range | Unit | Default |
-|-----------|-------|------|---------|
+|--|-|||
 | **crossfeed** | 0–100 | % | 0 |
 
 Routes a percentage of each tap's output into its partner: line 1 feeds into line 3, line 2 into line 4, and vice versa. The signal circulates between paired taps, creating feedback paths longer than any individual delay time.
@@ -179,7 +171,7 @@ A shift register inspired by Tom Whitwell's [Turing Machine](https://musicthing.
 Set **steps > 0** to activate. Some parameters are conditionally visible depending on **assign target**.
 
 | Parameter | Range | Unit | Default | Visibility |
-|-----------|-------|------|---------|------------|
+|--|-||||
 | **assign target** | 12 targets | – | time div | always |
 | **mod bottom** | 1/1–1/64 | – | 1/4 | time div only |
 | **mod depth** | 0–100 | % | 100 | not time div |
@@ -208,7 +200,7 @@ Parameters currently being modulated by the TM are marked with **(M)** in the pa
 **Available targets:**
 
 | Target | What it modulates | Per-line? |
-|--------|-------------------|-----------|
+|--|-|--|
 | **chorus depth** | Chorus wet/dry | no |
 | **chorus rate** | Chorus modulation speed | no |
 | **crossfeed** | Crossfeed amount | no |
@@ -229,7 +221,7 @@ For per-line targets, each line reads the shift register from a different bit ro
 Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. A toggle mechanism: every X of Y beats, the action fires. Next X of Y beats, it undoes itself.
 
 | Parameter | Range | Default |
-|-----------|-------|---------|
+|--|-||
 | **assign target** | off / flip balance / mute send / mute taps / all feedback min / all feedback max / stability -5% / -10% / -25% / flip levels | off |
 | **chance** | off / 1–100% | off |
 | **every** | 1–8 | 1 |
@@ -257,8 +249,6 @@ Parameters affected by an active event are marked with **(M)** in the parameter 
 - **stability -5% / -10% / -25%** – temporarily reduces the shift register's step stability, injecting more randomness into the TM pattern. Reverts on undo. (M) on: step stability.
 - **flip levels** – mirrors each tap's level around 50%: a tap at 25% becomes 75%, at 100% becomes 0%, at 50% stays put. Self-undoing (flip twice = original). Inverts the volume hierarchy – quiet background taps become foreground and vice versa. (M) on: tap 1–4 level.
 
----
-
 ## Recipes
 
 **Ambient wash.** Active taps = 4. All four lines in note mode: 1/1, 1/2, 1/4, 1/8. Frequency bottom = 20 hz, top = 1500 hz, slope = 24 dB. Saturation = 15%. Feedback at 40% per line. Chorus depth = 15%, rate = 0.2 hz. Play sparse notes and let the echoes build into a bed.
@@ -281,8 +271,6 @@ Parameters affected by an active event are marked with **(M)** in the parameter 
 
 **Crossfeed conversation.** Active taps = 4. All lines at 1/4, 1/8, 1/16, 1/32. Crossfeed = 30%, feedback = 35% per line. The signal circulates between paired taps, creating patterns denser than any single delay.
 
----
-
 ## Safety
 
 fx_llll allows per-line feedback up to 105% – above unity gain. This means the signal grows with each repetition. The tanh limiter in the feedback path prevents digital clipping, but the resulting audio can still be extremely loud and spectrally dense.
@@ -300,8 +288,6 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Be cautious with crossfeed.** Crossfeed at 50% with feedback at 50% produces more total feedback energy than you might expect. Start crossfeed low.
 - **Protect your hearing.** This is not a disclaimer for legal purposes. It's genuine advice from someone who has startled himself more than once with this effect.
 
----
-
 ## Known issues
 
 - **Send A/B routing** may not produce audible output depending on the host script's audio routing. This is a limitation of the fx mod framework's send bus architecture, not an fx_llll bug. Use insert mode for reliable operation.
@@ -309,13 +295,9 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Filter CPU at 48 dB:** The bandpass at 48 dB runs four cascaded RLPF + RHPF stages. This is the most CPU-intensive configuration. If CPU is tight, use 6 or 12 dB.
 - **Crossfeed + high feedback** can produce rapid, loud self-oscillation that the tanh limiter catches but doesn't silence. This is by design, but it can surprise you.
 
----
-
 ## Dependencies
 
 - [fx mod framework](https://llllllll.co/t/fx-mod-framework/)
-
----
 
 ## Credits
 
