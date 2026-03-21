@@ -32,7 +32,7 @@ The name came last. Four l's. Four lines. Four delay lines. And four vertical st
 
 ## Install
 
-**Via Maiden (recommended):** Open `http://norns.local/maiden`, type the following into the matron REPL at the bottom:
+**Via Maiden (recommended):** Open `http://norns.local/maiden`, type the following into the Maiden REPL at the bottom:
 
 ```
 ;install https://github.com/notrobintaylor/fx_llll
