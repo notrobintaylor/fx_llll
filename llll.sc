@@ -1,9 +1,8 @@
 // FxLlll — four-tap stereo delay with TM modulation and event system
 // Full stereo path (Balance2, no mono collapse). Always-on bandpass filter
-// with resonance (RLPF/RHPF at 12+ dB). Filter + saturation in both output
-// and feedback paths (accumulating). Chorus output-only. Crossfeed 1↔3, 2↔4.
-// DelayC with configurable pitchGlide lag. Feedback up to 105%, tanh safety.
-// Max delay 1s. No external UGens.
+// with resonance (RLPF/RHPF at 12+ dB). Feedback path raw + tanh.
+// Crossfeed 1↔3, 2↔4. DelayC with configurable pitchGlide lag.
+// Feedback up to 105%. Max delay 1s. No external UGens.
 
 FxLlll : FxBase {
 
@@ -42,8 +41,6 @@ FxLlll : FxBase {
             var bpC1, bpC2, bp6, bp12, bp24, bp36, bp48;
             var filtered, satDrive, saturated;
             var chMix, chRate, chMod, chDel, chorused;
-            var fbBpC1, fbBpC2, fbBp6, fbBp12, fbBp24, fbBp36, fbBp48;
-            var fbFiltered, fbSaturated;
 
             slew = \slew.kr(0);
             pGlide = \pitchGlide.kr(0.5);
@@ -121,23 +118,10 @@ FxLlll : FxBase {
 
             Out.ar(outBus, chorused);
 
-            // ---- FEEDBACK PATH (filter + saturation, accumulating) ----
+            // ---- FEEDBACK PATH (raw + tanh safety limiter) ----
             fbSum = (b1*fb1) + (b2*fb2) + (b3*fb3) + (b4*fb4);
 
-            // bandpass (same settings as output)
-            fbBpC1 = (-2pi * (fBot / SampleRate.ir)).exp;
-            fbBpC2 = (-2pi * (fTop / SampleRate.ir)).exp;
-            fbBp6 = OnePole.ar(fbSum - OnePole.ar(fbSum, fbBpC1), fbBpC2);
-            fbBp12 = RLPF.ar(RHPF.ar(fbSum, fBot, rq), fTop, rq);
-            fbBp24 = RLPF.ar(RHPF.ar(fbBp12, fBot, rq), fTop, rq);
-            fbBp36 = RLPF.ar(RHPF.ar(fbBp24, fBot, rq), fTop, rq);
-            fbBp48 = RLPF.ar(RHPF.ar(fbBp36, fBot, rq), fTop, rq);
-            fbFiltered = Select.ar(fSlope - 1, [fbBp6, fbBp12, fbBp24, fbBp48]);
-
-            // saturation (same drive as output)
-            fbSaturated = (fbFiltered * satDrive).tanh;
-
-            LocalOut.ar(fbSaturated);
+            LocalOut.ar(fbSum.tanh);
         }).add;
     }
 }
