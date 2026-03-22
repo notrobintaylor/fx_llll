@@ -2,13 +2,11 @@
 
 ### four lines
 
-A multitap delay that started with a boilerplate and turned into something with its own voice. Four delay lines, each with its own feel, level, balance, and feedback – feeding through a shared chain of filter, saturation, and chorus. A shift register generates evolving patterns. A clock-synced event system creates structural disruptions. The kind of delay that rewards curiosity.
+A multitap delay that started with a boilerplate and turned into something with its own voice. Four delay lines, each with its own feel, level, balance, and feedback, feeding through a shared chain of filter, saturation, and chorus. A shift register generates evolving patterns. A clock-synced event system creates structural disruptions. The kind of delay that rewards curiosity.
 
-Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod-framework/). Named after the four delay lines – and [llllllll.co](https://llllllll.co/), the lines forum, where norns musicians have been building and sharing since the beginning.
+Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod-framework/). Named after the four delay lines and [llllllll.co](https://llllllll.co/), the lines forum, where norns musicians have been building and sharing since the beginning.
 
 No external UGens required.
-
----
 
 ## Install
 
@@ -30,16 +28,14 @@ git clone https://github.com/notrobintaylor/fx_llll.git fx_llll
 
 Restart norns, activate under **SYSTEM > MODS**, restart again.
 
----
-
 ## Signal flow
 
 ```
 input --> send level --> + --> delay lines (stereo) --> active taps gate
                          ^                                    |
-                         |                           crossfeed (1↔3, 2↔4)
+                         |                              crossfeed (1↔3, 2↔4)
                          |                                    |
-                         |                        Balance2 (stereo position)
+                         |                          Balance2 (stereo position)
                          |                                    |
                          |            +------- ------+--------+
                          |            |                       |
@@ -47,7 +43,7 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |            |                       |
                          |       fb per line           level per line
                          |            |                       |
-                         |          tanh               bandpass filter
+                         |          tanh                 bandpass filter
                          |            |                       |
                          +------------+                  saturation
                                                               |
@@ -56,13 +52,11 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                                                              out
 ```
 
-The entire signal path is stereo – no mono collapse at any point. `Balance2` preserves the input's stereo image; position 0 passes the original image through, ±1 shifts to hard left or right.
+The entire signal path is stereo, no mono collapse at any point. `Balance2` preserves the input's stereo image; position 0 passes the original image through, ±1 shifts to hard left or right.
 
-The output path carries every echo through a bandpass filter, saturation, and chorus – so the first repetition already has full character. The feedback path is raw, with only a tanh safety limiter that soft-clips when feedback exceeds unity gain.
+The output path carries every echo through a bandpass filter, saturation, and chorus, so the first repetition already has full character. The feedback path is raw, with only a tanh safety limiter that soft-clips when feedback exceeds unity gain.
 
-When delay times change – whether you turn an encoder, switch time divisions, or the shift register mutates – you hear pitch sweep as the lines catch up. The **pitch glide** parameter controls this transition time (0–2500 ms, default 500 ms).
-
----
+When delay times change. whether you turn an encoder, switch time divisions, or the shift register mutates. you hear pitch sweep as the lines catch up. The **pitch glide** parameter controls this transition time (0–2500 ms, default 500 ms).
 
 ## Parameters
 
@@ -80,15 +74,15 @@ Select how many lines are active with **active taps** (1–4, default 1). Inacti
 
 | Parameter | Range | Unit | Defaults (1 / 2 / 3 / 4) | Visibility |
 |-----------|-------|------|---------------------------|------------|
-| **active taps** | 1–4 | – | 1 | always |
-| **balance** | -1.00 to 1.00 | – | 0, 0, 0, 0 | active taps |
+| **active taps** | 1–4 |. | 1 | always |
+| **balance** | -1.00 to 1.00 |. | 0, 0, 0, 0 | active taps |
 | **feedback** | 0–105 | % | 25, 25, 25, 25 | active taps |
-| **feel** | note / dotted / triplet / msec | – | note | active taps |
+| **feel** | note / dotted / triplet / msec |. | note | active taps |
 | **level** | 0–100 | % | 50, 25, 10, 5 | active taps |
 | **time** | 1–1000 | ms | 1000, 500, 250, 125 | feel = msec |
-| **time div** | 1/1–1/64 | – | 1/1, 1/2, 1/4, 1/8 | feel ≠ msec |
+| **time div** | 1/1–1/64 |. | 1/1, 1/2, 1/4, 1/8 | feel ≠ msec |
 
-**feel modes:** **note** = even subdivision locked to tempo, **dotted** = 1.5× (the gallop – ubiquitous in dub and ambient), **triplet** = 2/3× (instant swing), **msec** = free time, independent of tempo. Mix modes across lines freely.
+**feel modes:** **note** = even subdivision locked to tempo, **dotted** = 1.5× (the gallop. ubiquitous in dub and ambient), **triplet** = 2/3× (instant swing), **msec** = free time, independent of tempo. Mix modes across lines freely.
 
 **balance** preserves the input's stereo image. At 0, the echo sounds wherever the source was in the stereo field. At -1 or 1, the signal shifts hard left or right. Different from a traditional pan: a stereo synth pad stays wide at balance 0.
 
@@ -102,7 +96,7 @@ An always-on bandpass filter in the output path. **Filter type** sets frequency 
 
 | Parameter | Range | Unit | Default | Visibility |
 |-----------|-------|------|---------|------------|
-| **filter type** | low / band / high | – | low | always |
+| **filter type** | low / band / high |. | low | always |
 | **frequency bottom** | 20–20000 | hz | 20 | always |
 | **frequency top** | 20–20000 | hz | 2500 | always |
 | **resonance** | 0–100 | % | 0 | slope ≥ 12 dB |
@@ -135,7 +129,7 @@ Deliberately extreme range. At 0.3 hz and 20% depth: tape wobble. At 2000 hz and
 |-----------|-------|------|---------|
 | **crossfeed** | 0–100 | % | 0 |
 
-Routes a percentage of each tap's output into its partner: line 1 ↔ 3, line 2 ↔ 4. Creates feedback paths longer than any individual delay time. Warning: additive – can lead to rapid buildup with high feedback.
+Routes a percentage of each tap's output into its partner: line 1 ↔ 3, line 2 ↔ 4. Creates feedback paths longer than any individual delay time. Warning: additive. can lead to rapid buildup with high feedback.
 
 ### Modulation TM
 
@@ -143,16 +137,16 @@ A shift register inspired by Tom Whitwell's [Turing Machine](https://musicthing.
 
 | Parameter | Range | Unit | Default | Visibility |
 |-----------|-------|------|---------|------------|
-| **assign target** | 12 targets | – | time div | always |
-| **mod bottom** | 1/1–1/64 | – | 1/4 | time div only |
+| **assign target** | 12 targets |. | time div | always |
+| **mod bottom** | 1/1–1/64 |. | 1/4 | time div only |
 | **mod depth** | 0–100 | % | 100 | not time div |
-| **mod direction** | + / - / + & - | – | - | not time div |
-| **mod top** | 1/1–1/64 | – | 1/32 | time div only |
+| **mod direction** | + / - / + & - |. | - | not time div |
+| **mod top** | 1/1–1/64 |. | 1/32 | time div only |
 | **pitch glide** | 0–2500 | ms | 500 | time div + tap time |
 | **slew rate** | 0–2000 | ms | 0 | all other targets |
-| **step rate** | 4/1–1/16 | – | 1/4 | always |
+| **step rate** | 4/1–1/16 |. | 1/4 | always |
 | **step stability** | 0–100 | % | 50 | always |
-| **steps** | off / 1–16 | – | off | always |
+| **steps** | off / 1–16 |. | off | always |
 
 **Pitch glide** and **slew rate** are mutually exclusive. Pitch glide controls varispeed tape behavior for time-based targets. Slew rate controls parameter transition speed for everything else.
 
@@ -190,11 +184,9 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 | **reset after** | off / 2–64 | off | always |
 | **slew rate** | 0–2000 ms | 0 | always |
 
-**Chance** adds a probability gate. A missed trigger means the current state persists. **Reset after** counts successful toggles and restarts the clock – a safety net for chance.
+**Chance** adds a probability gate. A missed trigger means the current state persists. **Reset after** counts successful toggles and restarts the clock as a safety net for chance.
 
 **Actions:** flip balance, mute send, mute taps, all feedback min, all feedback max, stability -5%/-10%/-25%, flip levels.
-
----
 
 ## Recipes
 
@@ -218,8 +210,6 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 **Crossfeed conversation.** Active taps = 4. Time divs 1/4, 1/8, 1/16, 1/32. Crossfeed = 30%, feedback = 35%.
 
----
-
 ## Safety
 
 fx_llll allows per-line feedback up to 105%. The tanh limiter prevents digital clipping, but audio can still be extremely loud.
@@ -235,8 +225,6 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Be cautious with crossfeed.** Start low.
 - **Protect your hearing.** Genuine advice from someone who has startled himself more than once.
 
----
-
 ## Known issues
 
 - **Send A/B routing** may not produce audible output depending on the host script's audio routing. Use insert mode for reliable operation.
@@ -244,20 +232,18 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Filter CPU at 48 dB:** Four cascaded RLPF + RHPF stages. If CPU is tight, use 6 or 12 dB.
 - **Crossfeed + high feedback** can produce rapid, loud self-oscillation.
 
----
-
 ## Changelog
 
 ### 2.0
 
 **Architecture**
 
-- Full stereo signal path. No mono collapse – `Balance2` replaces `Mix.ar` + `Pan2.ar`. The input's stereo image survives into every echo. Balance at 0 means "pass through unchanged."
+- Full stereo signal path. No mono collapse. `Balance2` replaces `Mix.ar` + `Pan2.ar`. The input's stereo image survives into every echo. Balance at 0 means "pass through unchanged."
 - Bandpass-only filter. The filter type selector (low/band/high) now sets starting frequencies rather than switching filter topology. Two frequency knobs always define the passband window. One chain instead of three parallel chains = significant CPU savings.
 - Resonance on the bandpass. RLPF/RHPF at 12 dB and above. Both band edges can resonate independently. Cubic mapping curve: self-oscillation starts around 75% at 48 dB, giving most of the knob range to musically useful territory.
-- Active taps parameter. Choose 1–4 active delay lines. Inactive taps are muted at the SynthDef level and their parameters hidden in the menu. Default is 1 – a single centered delay as starting point.
+- Active taps parameter. Choose 1–4 active delay lines. Inactive taps are muted at the SynthDef level and their parameters hidden in the menu. Default is 1. a single centered delay as starting point.
 - Crossfeed between taps. Pairs 1↔3 and 2↔4. Additive: signal circulates between paired taps, creating feedback paths longer than any individual delay.
-- Pitch glide as parameter. Delay time transitions via `.lag()` on `DelayC` – varispeed tape behavior. Range 0–2500 ms (default 500 ms). Mutually exclusive with slew rate in the TM section.
+- Pitch glide as parameter. Delay time transitions via `.lag()` on `DelayC`. varispeed tape behavior. Range 0–2500 ms (default 500 ms). Mutually exclusive with slew rate in the TM section.
 
 **Modulation**
 
@@ -290,13 +276,9 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 
 Initial release. Four delay lines, multimode filter, saturation, chorus, Turing Machine modulation, clock-synced event system.
 
----
-
 ## Dependencies
 
 - [fx mod framework](https://llllllll.co/t/fx-mod-framework/)
-
----
 
 ## Credits
 
@@ -306,4 +288,4 @@ Modulation inspired by Tom Whitwell's [Turing Machine](https://musicthing.co.uk/
 
 Sound and behavior draws from: the **Roland RE-201 Space Echo**, **Strymon Magneto and Volante**, **Valhalla Delay**, the **Loudest Warning Analog Delay**, the **XAOC Sarajewo**, and the **SOMA Cosmos**.
 
-The name references the four delay lines, and [llllllll.co](https://llllllll.co/) – the lines forum, where we're all hanging out.
+The name references the four delay lines, and [llllllll.co](https://llllllll.co/). the lines forum, where we're all hanging out.
