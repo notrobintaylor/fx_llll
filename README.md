@@ -4,7 +4,7 @@
 
 A multitap delay that started with a boilerplate and turned into something with its own voice. Four delay lines, each with its own feel, level, balance, and feedback, feeding through a shared chain of filter, saturation, and chorus. A shift register generates evolving patterns. A clock-synced event system creates structural disruptions. The kind of delay that rewards curiosity.
 
-Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod-framework/). Named after the four delay lines and [llllllll.co](https://llllllll.co/), the lines forum, where norns musicians have been building and sharing since the beginning.
+Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod/62726/99)). Named after the four delay lines and [llllllll.co](https://llllllll.co/), the lines forum, where norns musicians have been building and sharing since the beginning.
 
 No external UGens required.
 
@@ -372,11 +372,11 @@ Initial release. Four delay lines, multimode filter, saturation, chorus, Turing 
 
 ## Dependencies
 
-- [fx mod framework](https://llllllll.co/t/fx-mod-framework/)
+- [fx mod framework](https://llllllll.co/t/fx-mod/62726/99)
 
 ## Credits
 
-Built on sixolet's [fx mod framework](https://llllllll.co/t/fx-mod-framework/).
+Built on sixolet's [fx mod framework](https://llllllll.co/t/fx-mod/62726/99).
 
 Modulation inspired by Tom Whitwell's [Turing Machine](https://musicthing.co.uk/pages/turing.html). Event system borrows the "every X do Y" paradigm from [Monome Teletype](https://monome.org/docs/teletype/).
 
