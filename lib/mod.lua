@@ -1,8 +1,5 @@
--- =========================================================================
--- fx_llll — four lines
--- a creative multitap delay with modulation and events
--- for the norns fx mod framework
--- =========================================================================
+-- fx_llll — four-tap stereo delay for the norns fx mod framework
+-- Lua side: parameters, TM shift register, clock-synced event system, OSC to SC
 
 local fx = require("fx/lib/fx")
 local mod = require 'core/mods'
@@ -653,6 +650,14 @@ function FxLlll:add_params()
     -- modulation TM --
     params:add_separator("fx_ll_tm", "modulation TM")
 
+    params:add_option("fx_ll_tm_mod_target", "assign target", target_names, TARGET.TIME_DIV)
+    params:set_action("fx_ll_tm_mod_target", function(v)
+        if tm_active() then restore(turing.prev_target) end
+        turing.prev_target = v; turing.target = v
+        vis_tm()
+        if tm_active() then tm_activate() end
+    end)
+
     params:add_option("fx_ll_tm_mod_bottom", "mod bottom", timediv_names, 3)
     params:set_action("fx_ll_tm_mod_bottom", function(v)
         turing.range_low = v
@@ -667,14 +672,6 @@ function FxLlll:add_params()
         if v == 1 then turing.direction = 1
         elseif v == 2 then turing.direction = -1
         else turing.direction = 0 end
-    end)
-
-    params:add_option("fx_ll_tm_mod_target", "assign target", target_names, TARGET.TIME_DIV)
-    params:set_action("fx_ll_tm_mod_target", function(v)
-        if tm_active() then restore(turing.prev_target) end
-        turing.prev_target = v; turing.target = v
-        vis_tm()
-        if tm_active() then tm_activate() end
     end)
 
     params:add_option("fx_ll_tm_mod_top", "mod top", timediv_names, 6)
@@ -709,6 +706,16 @@ function FxLlll:add_params()
     -- every x/y do z --
     params:add_separator("fx_ll_evt", "every x/y do z")
 
+    params:add_option("fx_ll_evt_action", "assign target", event_action_names, 1)
+    params:set_action("fx_ll_evt_action", function(v)
+        -- undo + force-restore to prevent stale state
+        if event_state.active then evt_undo(); event_state.active = false end
+        unmark_ids(evt_action_param_ids[event_state.action])
+        force_restore_all()
+        event_state.action = v
+        start_evt_clock()
+    end)
+
     params:add_number("fx_ll_evt_chance", "chance", 0, 100, 0, fmt_chance)
     params:set_action("fx_ll_evt_chance", function(v) event_state.chance = v end)
 
@@ -732,16 +739,6 @@ function FxLlll:add_params()
 
     params:add_number("fx_ll_evt_slew_rate", "slew rate", 0, 2000, 0, fmt_ms)
     params:set_action("fx_ll_evt_slew_rate", function(v) event_state.slew = v end)
-
-    params:add_option("fx_ll_evt_action", "assign target", event_action_names, 1)
-    params:set_action("fx_ll_evt_action", function(v)
-        -- undo + force-restore to prevent stale state
-        if event_state.active then evt_undo(); event_state.active = false end
-        unmark_ids(evt_action_param_ids[event_state.action])
-        force_restore_all()
-        event_state.action = v
-        start_evt_clock()
-    end)
 
     -- populate (M) marker map --
     target_param_ids[TARGET.CHORUS_DEPTH] = {"fx_ll_chorus_depth"}
