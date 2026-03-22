@@ -82,7 +82,7 @@ Select how many lines are active with **active taps** (1–4, default 1). Inacti
 | **time** | 1–1000 | ms | 1000, 500, 250, 125 | feel = msec |
 | **time div** | 1/1–1/64 |. | 1/1, 1/2, 1/4, 1/8 | feel ≠ msec |
 
-**feel modes:** **note** = even subdivision locked to tempo, **dotted** = 1.5× (the gallop. ubiquitous in dub and ambient), **triplet** = 2/3× (instant swing), **msec** = free time, independent of tempo. Mix modes across lines freely.
+**feel modes:** **note** = even subdivision locked to tempo, **dotted** = 1.5×, **triplet** = 2/3×, **msec** = free time, independent of tempo. Mix modes across lines freely.
 
 **balance** preserves the input's stereo image. At 0, the echo sounds wherever the source was in the stereo field. At -1 or 1, the signal shifts hard left or right. Different from a traditional pan: a stereo synth pad stays wide at balance 0.
 
@@ -188,28 +188,6 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 **Actions:** flip balance, mute send, mute taps, all feedback min, all feedback max, stability -5%/-10%/-25%, flip levels.
 
-## Recipes
-
-**Ambient wash.** Active taps = 4, all note feel: 1/1, 1/2, 1/4, 1/8. Filter type = low, top = 1500, slope = 24 dB. Saturation = 15%. Feedback = 40%. Chorus depth = 15%, rate = 0.2 hz.
-
-**Dub delay.** Active taps = 1. Dotted 1/4, feedback = 60%. Filter type = low, top = 2000. Saturation = 40%.
-
-**Rhythmic gate.** Active taps = 4. TM steps = 8, assign target = tap level, direction = -, depth = 100%, step rate = 1/8, slew = 0 ms. Stability = 20%.
-
-**Tape degradation.** Saturation = 50%, filter type = low, top = 1200, slope = 48 dB. Chorus depth = 10%, rate = 0.5 hz.
-
-**Structural rhythm.** Every 1 of 8, assign target = flip balance. Combined with TM on tap levels at a different rate.
-
-**FM delay.** Chorus rate = 3000 hz, depth = 60%. Filter type = high, bottom = 200. Metallic, bell-like echoes.
-
-**Controlled chaos.** Active taps = 4. TM steps = 12, assign target = time div, bottom = 1/8, top = 1/64, stability = 40%, rate = 1/4. Every 3 of 7, assign target = stability -25%, chance = 70%, reset after = 8.
-
-**Slapback + drone.** Active taps = 2. Line 1: msec, 80 ms, feedback = 10%, balance = -0.7. Line 2: note, 1/1, feedback = 90%, balance = 0.7.
-
-**Resonant sweep.** Filter type = band, bottom = 200, top = 800, slope = 24 dB, resonance = 70%. TM steps = 8, assign target = filter frequency, rate = 1/4, slew = 500 ms.
-
-**Crossfeed conversation.** Active taps = 4. Time divs 1/4, 1/8, 1/16, 1/32. Crossfeed = 30%, feedback = 35%.
-
 ## User stories
 
 ### 1.0
@@ -217,29 +195,19 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 **Taps**
 
 - I want four independent delay lines so that I can create polyrhythmic echo textures from a single source.
-
 - I want per-tap feedback control so that each line can have a different character, from tight slapback to self-oscillating drone.
-
 - I want to choose between note, dotted, triplet, and msec feel per tap so that I can mix clock-synced and free-running delay times.
-
 - I want dotted feel so that I get the classic dub/ambient gallop without manual calculation.
-
 - I want triplet feel so that I can create swing-like echo patterns locked to tempo.
-
 - I want msec feel so that I can set delay times independent of tempo for sound design purposes.
-
 - I want per-tap level control so that I can set the volume hierarchy across the four lines.
-
 - I want per-tap pan control so that I can distribute echoes across the stereo field.
-
 - I want feedback up to 105% with tanh limiting so that I can push lines into self-oscillation without digital clipping.
 
 **Filter**
 
 - I want a multimode filter in the output path so that every echo, including the first, is already colored.
-
 - I want to switch between lowpass, bandpass, and highpass so that I can shape the echo spectrum to fit the mix.
-
 - I want filter slope options from 6 to 48 dB so that I can choose between gentle rolloff and aggressive cuts.
 
 **Saturation**
@@ -253,55 +221,34 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 **Modulation TM**
 
 - I want a Turing Machine shift register so that I get evolving, semi-random modulation patterns that feel musical.
-
 - I want adjustable step stability so that I can lock a pattern, let it drift, or go fully random.
-
 - I want to assign the TM to different parameters so that the same pattern can modulate delay times, feedback, levels, filter, or other targets.
-
 - I want per-tap bit rotation on the register so that four lines get related but distinct modulation values from one pattern.
-
 - I want mod depth control so that I can limit how far the TM swings a parameter from its base value.
-
 - I want mod direction (+, -, bipolar) so that I can control whether the register pushes values up, down, or both ways.
-
 - I want time division modulation with top/bottom range so that the TM picks from a defined set of subdivisions.
-
 - I want a slew rate on TM modulation so that I can smooth discrete steps into flowing transitions.
-
 - I want a step rate control so that I can set how fast the register advances relative to tempo.
-
 - I want (M) markers on modulated parameters so that I can see at a glance which params the TM is currently affecting.
 
 **Events**
 
 - I want a clock-synced event system so that structural disruptions happen at musically meaningful intervals.
-
 - I want the toggle mechanism (do/undo) so that every event action automatically reverts, keeping the performance stable.
-
 - I want "every X of Y" timing so that I can create event cycles that phase against the time signature.
-
 - I want odd denominators so that events create asymmetric rhythmic patterns (7-beat cycles, 5-beat cycles).
-
 - I want flip pans as an event action so that the stereo image periodically mirrors itself.
-
 - I want mute send as an event action so that the delay tail rings out cleanly while new input is temporarily silenced.
-
 - I want mute taps as an event action so that I get periodic silence followed by restoration.
-
 - I want all feedback min/max as event actions so that I can create sudden echo death or intense resonance bursts.
-
 - I want stability reduction as an event action so that the TM pattern periodically destabilizes and recovers.
-
 - I want event slew rate so that event transitions can be instant or gradual, independent of TM slew.
-
 - I want (M) markers on event-affected params so that I can see which parameters are currently overridden.
 
 **Infrastructure**
 
 - I want the mod to work with any script via the fx mod framework so that I don't have to choose between fx_llll and my favorite sequencer.
-
 - I want tempo-synced delay times that update when BPM changes so that echoes stay in time without manual adjustment.
-
 - I want clean state restoration on script cleanup so that switching scripts doesn't leave stale audio or feedback.
 
 ### 2.0
@@ -309,75 +256,52 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 **Architecture**
 
 - I want a full stereo signal path so that the input's spatial character survives into every echo instead of being collapsed to mono.
-
 - I want Balance2 instead of Pan2 so that stereo sources stay wide at balance 0 instead of being mono-summed and repositioned.
-
 - I want to choose how many taps are active (1 to 4) so that I can start simple and add complexity as needed.
-
 - I want inactive taps muted at the SynthDef level so that unused lines don't waste CPU or clutter the parameter menu.
-
 - I want the default to be one centered delay line so that the first experience is clean and inviting, not four lines at full volume.
 
 **Filter**
 
 - I want the filter to always be a bandpass with two frequency knobs so that I can carve a window from both ends simultaneously.
-
 - I want filter type as a convenience shortcut that sets starting frequencies so that I can quickly jump to low/band/high without losing the ability to fine-tune.
-
 - I want resonance on both edges of the bandpass so that the low cutoff and high cutoff can sing independently.
-
 - I want a cubic resonance mapping so that most of the knob range is musically useful and self-oscillation doesn't start until around 75%.
-
 - I want resonance hidden at 6 dB slope so that I don't see a parameter that has no effect.
 
 **Crossfeed**
 
 - I want crossfeed between tap pairs (1↔3, 2↔4) so that signal circulates between lines, creating feedback paths longer than any single delay.
-
 - I want crossfeed to be additive so that the interaction between lines is audible even at low settings.
 
 **Pitch glide**
 
 - I want pitch glide as a parameter so that delay time changes produce controllable varispeed tape behavior.
-
 - I want pitch glide range up to 2500 ms so that I can create anything from quick chirps to slow, sustained detuning.
-
 - I want pitch glide and slew rate to be mutually exclusive so that time-based and parameter-based transitions don't interfere with each other.
 
 **Modulation**
 
 - I want crossfeed as a TM target so that the interaction between tap pairs evolves over time.
-
 - I want filter resonance as a TM target so that the filter peak sweeps with the shift register.
-
 - I want time div modulation to only affect note-feel taps so that my msec taps stay at their manual settings.
-
 - I want tap time modulation to only affect msec-feel taps so that my clock-synced taps stay at their subdivisions.
-
 - I want step rates of 4/1 and 2/1 so that the register can shift at geological speed for long ambient sessions.
 
 **Events**
 
 - I want flip levels as an event action so that the volume hierarchy periodically inverts (quiet taps become loud and vice versa).
-
 - I want a chance parameter on events so that some triggers are probabilistically skipped, creating unpredictable event durations.
-
 - I want reset after so that the event clock re-syncs after a set number of toggles, preventing indefinite drift from skipped triggers.
-
 - I want force-restore when switching event actions so that changing or disabling an action immediately returns all affected parameters to their base values without stale state.
 
 **Defaults and naming**
 
 - I want quieter defaults (levels 50/25/10/5, feedback 25%) so that the first encounter is inviting rather than overwhelming.
-
 - I want all pans centered by default so that a single active tap starts in the middle, not offset to one side.
-
 - I want "balance" instead of "pan" so that the parameter name reflects its actual stereo behavior.
-
 - I want "time div" instead of "subdiv" so that the parameter name is immediately clear without musical jargon.
-
 - I want parameters sorted alphabetically within each section so that I can find things predictably.
-
 - I want context-dependent parameter visibility so that I only see parameters relevant to my current settings.
 
 ## Safety
