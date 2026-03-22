@@ -82,7 +82,7 @@ Select how many lines are active with **active taps** (1–4, default 1). Inacti
 | **time** | 1–1000 | ms | 1000, 500, 250, 125 | feel = msec |
 | **time div** | 1/1–1/64 |. | 1/1, 1/2, 1/4, 1/8 | feel ≠ msec |
 
-**feel modes:** **note** = even subdivision locked to tempo, **dotted** = 1.5× (the gallop. ubiquitous in dub and ambient), **triplet** = 2/3× (instant swing), **msec** = free time, independent of tempo. Mix modes across lines freely.
+**feel modes:** **note** = even subdivision locked to tempo, **dotted** = 1.5×, **triplet** = 2/3×, **msec** = free time, independent of tempo. Mix modes across lines freely.
 
 **balance** preserves the input's stereo image. At 0, the echo sounds wherever the source was in the stereo field. At -1 or 1, the signal shifts hard left or right. Different from a traditional pan: a stereo synth pad stays wide at balance 0.
 
