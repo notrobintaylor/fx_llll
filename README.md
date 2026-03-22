@@ -37,7 +37,7 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |                                    |
                          |                         Balance2 (stereo position)
                          |                                    |
-                         |            +--------------+--------+
+                         |            +-----------------------+
                          |            |                       |
                          |      feedback path            output path
                          |            |                       |
