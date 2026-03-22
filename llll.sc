@@ -1,39 +1,9 @@
-// =========================================================================
-// FxLlll — four lines, a creative multitap delay
-// =========================================================================
-//
-// Signal flow:
-//
-//   input × gain ──┬──> DelayC (line 1) ──> stereo ──┐
-//      + feedback  ├──> DelayC (line 2) ──> stereo ──┤  (gated by activeTaps)
-//                  ├──> DelayC (line 3) ──> stereo ──┤
-//                  └──> DelayC (line 4) ──> stereo ──┘
-//                                                    │
-//                            crossfeed (1↔3, 2↔4)    │
-//                                                    │
-//                               ┌────────────────────┤
-//                               │                    │
-//   OUTPUT PATH:                │   FEEDBACK PATH:   │
-//     Balance2 × level → sum    │   Balance2 × fb → sum
-//              │                │              │
-//       bandpass filter         │          tanh limiter
-//        (always-on BP)         │              │
-//              │                │         LocalOut → back
-//         saturation            │
-//              │                │
-//         chorus                │
-//              │                │
-//             OUT               │
-//
-// Full stereo path: no mono collapse. Balance2 preserves the input
-// stereo image; position 0 = original, ±1 = hard L/R.
-// Bandpass-only filter: bottom freq + top freq define the window.
-// Bottom=20, Top=20k = bypass. RLPF/RHPF at 12+ dB for resonance.
-// Feedback path: raw + tanh safety limiter.
-// Crossfeed circulates signal between taps (1↔3, 2↔4).
-// DelayC (cubic interp) + pitchGlide lag = pitch-shifting on time changes.
-// Feedback up to 105% with tanh safety. Max delay 1s. No ext. UGens.
-// =========================================================================
+// FxLlll — four-tap stereo delay with TM modulation and event system
+// Full stereo path (Balance2, no mono collapse). Always-on bandpass filter
+// with resonance (RLPF/RHPF at 12+ dB). Filter + saturation in both output
+// and feedback paths (accumulating). Chorus output-only. Crossfeed 1↔3, 2↔4.
+// DelayC with configurable pitchGlide lag. Feedback up to 105%, tanh safety.
+// Max delay 1s. No external UGens.
 
 FxLlll : FxBase {
 
@@ -72,6 +42,8 @@ FxLlll : FxBase {
             var bpC1, bpC2, bp6, bp12, bp24, bp36, bp48;
             var filtered, satDrive, saturated;
             var chMix, chRate, chMod, chDel, chorused;
+            var fbBpC1, fbBpC2, fbBp6, fbBp12, fbBp24, fbBp36, fbBp48;
+            var fbFiltered, fbSaturated;
 
             slew = \slew.kr(0);
             pGlide = \pitchGlide.kr(0.5);
@@ -149,10 +121,23 @@ FxLlll : FxBase {
 
             Out.ar(outBus, chorused);
 
-            // ---- FEEDBACK PATH (raw + tanh safety limiter) ----
+            // ---- FEEDBACK PATH (filter + saturation, accumulating) ----
             fbSum = (b1*fb1) + (b2*fb2) + (b3*fb3) + (b4*fb4);
 
-            LocalOut.ar(fbSum.tanh);
+            // bandpass (same settings as output)
+            fbBpC1 = (-2pi * (fBot / SampleRate.ir)).exp;
+            fbBpC2 = (-2pi * (fTop / SampleRate.ir)).exp;
+            fbBp6 = OnePole.ar(fbSum - OnePole.ar(fbSum, fbBpC1), fbBpC2);
+            fbBp12 = RLPF.ar(RHPF.ar(fbSum, fBot, rq), fTop, rq);
+            fbBp24 = RLPF.ar(RHPF.ar(fbBp12, fBot, rq), fTop, rq);
+            fbBp36 = RLPF.ar(RHPF.ar(fbBp24, fBot, rq), fTop, rq);
+            fbBp48 = RLPF.ar(RHPF.ar(fbBp36, fBot, rq), fTop, rq);
+            fbFiltered = Select.ar(fSlope - 1, [fbBp6, fbBp12, fbBp24, fbBp48]);
+
+            // saturation (same drive as output)
+            fbSaturated = (fbFiltered * satDrive).tanh;
+
+            LocalOut.ar(fbSaturated);
         }).add;
     }
 }
