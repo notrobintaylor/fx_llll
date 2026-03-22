@@ -35,17 +35,17 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |                                    |
                          |                          Balance2 (stereo position)
                          |                                    |
-                         |            +------- ------+--------+
+                         |            +--------------+--------+
                          |            |                       |
                          |      feedback path            output path
                          |            |                       |
                          |       fb per line           level per line
                          |            |                       |
-                         |      bandpass filter          bandpass filter
-                         |       (accumulating)          (same settings)
+                         |     bandpass filter         bandpass filter
+                         |      (accumulating)         (same settings)
                          |            |                       |
-                         |       saturation              saturation
-                         |       (accumulating)          (same settings)
+                         |        saturation              saturation
+                         |      (accumulating)         (same settings)
                          |            |                       |
                          |          tanh                   chorus
                          |            |                       |
