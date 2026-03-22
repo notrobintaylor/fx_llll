@@ -33,9 +33,9 @@ Restart norns, activate under **SYSTEM > MODS**, restart again.
 ```
 input --> send level --> + --> delay lines (stereo) --> active taps gate
                          ^                                    |
-                         |                            crossfeed (1↔3, 2↔4)
+                         |                           crossfeed (1↔3, 2↔4)
                          |                                    |
-                         |                         Balance2 (stereo position)
+                         |                        Balance2 (stereo position)
                          |                                    |
                          |            +-----------------------+
                          |            |                       |
