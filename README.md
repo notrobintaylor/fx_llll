@@ -2,33 +2,13 @@
 
 ### four lines
 
-A multitap delay that started with a boilerplate and turned into something with its own voice. Four delay lines, each with its own feel, level, balance, and feedback – feeding through a shared chain of filter, saturation, and chorus. A shift register generates evolving patterns. A clock-synced event system creates structural disruptions. The kind of delay that rewards curiosity.
+A multitap delay with a shift register modulator and a clock-synced event system. Four delay lines, each with its own feel, level, balance, and feedback – feeding through a bandpass filter, saturation, and chorus. Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod-framework/). No external UGens required.
 
-Built for the [norns fx mod framework](https://llllllll.co/t/fx-mod-framework/). Named after the four delay lines – and [llllllll.co](https://llllllll.co/), the lines forum, where norns musicians have been building and sharing since the beginning.
-
-No external UGens required.
-
-## How it got here
-
-fx_llll didn't start as fx_llll. I started with a port of justmat's Greyhole reverb script into the fx mod framework – an exercise in understanding how mods work, how SuperCollider talks to Lua via OSC, and where the audio actually goes. That port worked. Then came a Pools port. That worked too. Then the question became: what if instead of porting someone else's effect, I design one from scratch?
-
-The first version was a straightforward multitap delay. Four `DelayL` instances, a lowpass filter in the feedback path, tempo sync via `clock.get_tempo()`. It worked, but it was boring – the kind of delay you set once and forget about. The interesting question wasn't "how do I build a delay" but "how do I build a delay that changes over time in ways I can't fully predict but can still steer?"
-
-That's when the Turing Machine came in. Tom Whitwell's shift register module for Eurorack is one of those designs where the simplicity of the mechanism – shift a register, maybe flip a bit – produces complexity that feels musical rather than arbitrary. Porting that concept to Lua was straightforward. The less obvious part was figuring out what to modulate. Delay times were the first target, but it turned out that modulating feedback amounts, filter frequencies, per-tap levels, and stereo positions was often more interesting – especially when each tap reads the register from a different bit rotation, so four related-but-distinct patterns emerge from a single sequence.
-
-The event system came from a different direction entirely. Monome Teletype's "every X do Y" is a way of thinking about time as something you can program – not just subdivide. The idea of periodically flipping all balance positions, or temporarily muting the send, or briefly destabilizing the shift register's pattern, adds a structural rhythm that sits on top of whatever the delay and modulation are already doing. It's the difference between a texture and a composition.
-
-Per-tap feedback was a late addition that changed everything. When each line has its own feedback amount, the four lines stop being four copies of the same thing and start being four different instruments. Line 1 with 80% feedback becomes a drone generator. Line 4 with 10% feedback becomes a single slapback. Same delay, completely different character per voice.
-
-The filter and processing chain originally lived in the feedback path – meaning the first echo came through clean and only subsequent repetitions were processed. This sounded wrong. In a real tape echo, the first playback head already colors the sound. Moving the processing chain to the output path (where every echo, including the first, passes through) fixed that. The tradeoff: processing doesn't accumulate across feedback passes. But the feedback path's tanh limiter adds its own subtle saturation that builds with each repetition.
-
-The move to a full stereo signal path came from a simple realization: the delay lines were already running on stereo input, then immediately collapsing to mono and re-panning. That's destroying information you already paid the CPU for. Now the entire path – from delay through crossfeed through balance through feedback – stays stereo. Balance at 0 means "pass the original stereo image through unchanged." The input's spatial character survives into every echo.
-
-The name came last. Four l's. Four lines. Four delay lines. And four vertical strokes that look like a waveform, or like the bars of a delay visualization, or like nothing at all – depending on how you look at them.
+Named after the four delay lines – and [llllllll.co](https://llllllll.co/), where norns musicians have been building and sharing since the beginning.
 
 ## Install
 
-**Via Maiden (recommended):** Open `http://norns.local/maiden`, type the following into the Maiden REPL at the bottom:
+**Via Maiden:** Open `http://norns.local/maiden`, type the following into the REPL:
 
 ```
 ;install https://github.com/notrobintaylor/fx_llll
@@ -36,7 +16,7 @@ The name came last. Four l's. Four lines. Four delay lines. And four vertical st
 
 Restart norns, activate under **SYSTEM > MODS**, restart again.
 
-**Via SSH (manual):**
+**Via SSH:**
 
 ```bash
 ssh we@norns.local
@@ -44,16 +24,7 @@ cd ~/dust/code
 git clone https://github.com/notrobintaylor/fx_llll.git fx_llll
 ```
 
-Restart norns, activate under **SYSTEM > MODS**, restart again.
-
-**File structure for reference:**
-
-```
-dust/code/fx_llll/
-├── lib/
-│   └── mod.lua
-└── llll.sc
-```
+Restart, activate, restart.
 
 ## Signal flow
 
@@ -70,20 +41,22 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
                          |            |                       |
                          |       fb per line           level per line
                          |            |                       |
-                         |          tanh                 bandpass filter
+                         |      bandpass filter          bandpass filter
+                         |       (accumulating)          (same settings)
                          |            |                       |
-                         |          tanh                  saturation
+                         |       saturation              saturation
+                         |       (accumulating)          (same settings)
                          |            |                       |
-                         +------------+                    chorus
-                                                              |
-                                                             out
+                         |          tanh                   chorus
+                         |            |                       |
+                         +------------+                      out
 ```
 
-The entire signal path is stereo – no mono collapse at any point. `Balance2` preserves the input's stereo image; position 0 passes the original image through, ±1 shifts to hard left or right.
+The entire signal path is stereo. `Balance2` preserves the input's stereo image: position 0 = original, ±1 = hard L/R.
 
-The output path carries every echo through a bandpass filter, saturation, and chorus – so the first repetition already has full character. The feedback path is raw, with only a tanh safety limiter that soft-clips when feedback exceeds unity gain. This split means: processing colors the sound you hear, while feedback preserves the dynamics needed for natural echo behavior.
+Processing lives in both paths. The output path gives every echo – including the first – full character through filter, saturation, and chorus. The feedback path runs the same filter and saturation settings, so processing accumulates across repetitions: each pass darkens and compresses the signal further. Echo 10 is a ghost of echo 1. Chorus is output-only – accumulating pitch modulation would detune the feedback loop.
 
-When delay times change – whether you turn an encoder, switch subdivisions, or the shift register mutates – you hear pitch sweep as the lines catch up. The **pitch glide** parameter controls this transition time (0–2500 ms). The Turing Machine exploits this: target "tap time" and listen to the lines pitch-shift in evolving patterns.
+When delay times change, you hear pitch sweep as the read head catches up to the new position. The **pitch glide** parameter controls this transition time (0–2500 ms).
 
 ## Parameters
 
@@ -95,7 +68,7 @@ When delay times change – whether you turn an encoder, switch subdivisions, or
 
 ### Taps
 
-Select how many lines are active with **active taps** (1–4, default 1). Inactive taps are muted and their parameters hidden. Each active tap has its own feel mode that determines how the delay time is derived. Depending on the feel, either **time div** or **time** is visible.
+**Active taps** (1–4, default 1) controls how many lines are active. Inactive taps are muted and hidden. Each tap's **feel** determines timing mode: either **time div** or **time** is visible.
 
 | Parameter | Range | Unit | Defaults (1 / 2 / 3 / 4) |
 |-----------|-------|------|---------------------------|
@@ -107,17 +80,17 @@ Select how many lines are active with **active taps** (1–4, default 1). Inacti
 | **balance** | -1.00 to 1.00 | – | 0, 0, 0, 0 |
 | **feedback** | 0–105 | % | 25, 25, 25, 25 |
 
-**feel modes:** **note** = even subdivision locked to tempo, **dotted** = 1.5× the subdivision (the gallop – ubiquitous in dub and ambient), **triplet** = 2/3× (three in the space of two, instant swing), **msec** = free time in milliseconds, independent of tempo. You can mix feel modes across lines: three synced to the clock and one running free, or any other combination.
+**Feel modes:** **note** = subdivision locked to tempo, **dotted** = 1.5× (the gallop), **triplet** = 2/3× (instant swing), **msec** = free time, independent of tempo. Modes can differ per line.
 
-**balance** preserves the input's stereo image. At 0, the echo sounds wherever the source was in the stereo field. At -1 or 1, the entire signal shifts hard left or right. This is different from a traditional pan: a stereo synth pad stays wide at balance 0, where a pan control would collapse it to mono first.
+**Balance** preserves the input's stereo image. At 0, the echo inherits the source's position. At ±1 it shifts hard left or right. Unlike pan, a stereo input stays wide at balance 0.
 
-**On feedback at 105%:** Pushing past unity means the signal grows with each pass. The tanh limiter in the feedback path soft-clips this into warm, saturated self-oscillation – similar to a Space Echo feeding back into distortion. This is a creative tool, not a mistake. But it requires care. See the safety section.
+**Feedback at 105%** pushes past unity. The tanh limiter soft-clips this into saturated self-oscillation. Creative, not a mistake – but requires care.
 
-**Maximum delay time** is 1 second per line. Longer subdivision values at slow tempos are clamped.
+Maximum delay time is 1 second per line. Longer subdivisions at slow tempos are clamped.
 
 ### Filter
 
-An always-on bandpass filter in the output path. Every echo passes through it. **Filter type** sets the frequency parameters to common starting points; the two frequency knobs can then be adjusted freely.
+Always-on bandpass in both the output and feedback paths. **Filter type** sets the frequencies to common starting points; both knobs remain freely adjustable afterward.
 
 | Parameter | Range | Unit | Default |
 |-----------|-------|------|---------|
@@ -127,13 +100,9 @@ An always-on bandpass filter in the output path. Every echo passes through it. *
 | **resonance** | 0–100 | % | 0 |
 | **slope** | 6 / 12 / 24 / 48 | dB | 12 dB |
 
-The filter is always a bandpass defined by two frequency parameters. **Filter type** is a convenience shortcut: **low** sets bottom = 20 hz, top = 2500 hz. **Band** sets bottom = 250 hz, top = 2500 hz. **High** sets bottom = 250 hz, top = 20000 hz. After selecting a type, both frequencies can be adjusted independently – the type doesn't lock them.
+**Filter type** values: **low** = 20/2500 hz, **band** = 250/2500 hz, **high** = 250/20000 hz. Bottom and top are cross-clamped.
 
-Bottom and top are cross-clamped: bottom can never exceed top.
-
-**resonance** adds a peak at the cutoff frequencies. At 12 dB and above, both the high-pass and low-pass edges of the bandpass can resonate independently – the bottom edge sings differently from the top edge. Resonance is hidden at 6 dB slope (OnePole has no resonance). At high values with steep slopes, resonance becomes increasingly aggressive.
-
-Frequency parameters use exponential scaling: fine control at low values, coarser at high values – matching how we perceive pitch. Display adapts to magnitude: integers above 100 hz, one decimal between 10–99 hz, two decimals below 10 hz.
+**Resonance** peaks at both cutoff edges independently. Hidden at 6 dB (OnePole has no resonance). The curve is designed so self-oscillation begins around 75% at 48 dB slope.
 
 ### Saturation
 
@@ -141,7 +110,7 @@ Frequency parameters use exponential scaling: fine control at low values, coarse
 |-----------|-------|------|---------|
 | **saturation** | 0–100 | % | 0 |
 
-Tanh soft clipping. At 30% you get warmth. At 70% you get crunch. At 100% you get a wall. Because saturation sits in the output path, even the first echo is affected – you don't need feedback for it to color the sound.
+Tanh soft clipping in both the output and feedback paths. Every echo is affected, and the effect accumulates across repetitions.
 
 ### Chorus
 
@@ -150,7 +119,7 @@ Tanh soft clipping. At 30% you get warmth. At 70% you get crunch. At 100% you ge
 | **depth** | 0–100 | % | 0 |
 | **rate** | 0.01–10000 | hz | 1.0 |
 
-A delay-line chorus that modulates all echoes. The range is deliberately extreme. At 0.3 hz and 20% depth, you get classic tape wobble – the echoes shimmer like sunlight on water. At 2000 hz and 60% depth, the delay becomes a ring modulator, each echo transformed into metallic sidebands. The boundary between chorus and FM synthesis is where the interesting things happen, and this parameter range lets you explore all of it.
+Deliberately extreme range. At low rates and moderate depth: tape wobble. At high rates and high depth: ring modulation, metallic sidebands. The boundary between chorus and FM synthesis is where the interesting things happen.
 
 ### Crossfeed
 
@@ -158,17 +127,11 @@ A delay-line chorus that modulates all echoes. The range is deliberately extreme
 |-----------|-------|------|---------|
 | **crossfeed** | 0–100 | % | 0 |
 
-Routes a percentage of each tap's output into its partner: line 1 feeds into line 3, line 2 into line 4, and vice versa. The signal circulates between paired taps, creating feedback paths longer than any individual delay time.
-
-At 0% the four lines are independent. As crossfeed increases, the lines start responding to each other – four voices having a conversation where each one reacts to what the others just said. With fx_llll's 1-second maximum delay, crossfeed creates shorter, denser patterns rather than evolving loops.
-
-**Warning:** crossfeed and high feedback can lead to rapid buildup. The tanh limiter catches it, but the result may be loud. Start low.
+Routes signal between paired taps: 1↔3, 2↔4. At 0% the lines are independent. As crossfeed increases, they start responding to each other. With fx_llll's 1-second maximum delay, crossfeed creates dense patterns rather than evolving loops. Crossfeed and high feedback can lead to rapid buildup – start low.
 
 ### Modulation TM
 
-A shift register inspired by Tom Whitwell's [Turing Machine](https://musicthing.co.uk/pages/turing.html). Instead of generating random voltages for a synthesizer, it generates evolving patterns that modulate delay parameters.
-
-Set **steps > 0** to activate. Some parameters are conditionally visible depending on **assign target**.
+A shift register inspired by Tom Whitwell's [Turing Machine](https://musicthing.co.uk/pages/turing.html). Set **steps > 0** to activate. Parameters are conditionally visible depending on **assign target**.
 
 | Parameter | Range | Unit | Default | Visibility |
 |-----------|-------|------|---------|------------|
@@ -183,21 +146,17 @@ Set **steps > 0** to activate. Some parameters are conditionally visible dependi
 | **step stability** | 0–100 | % | 50 | always |
 | **steps** | off / 1–16 | – | off | always |
 
-**step stability** controls how much the pattern mutates. At 100%, the pattern is completely locked – it repeats exactly every N steps (where N = register length). At 0%, every step is fully random. The interesting territory is in between: at 50%, the pattern is recognizable but slowly drifting, like a musician who keeps almost-but-not-quite playing the same phrase.
+**Step stability:** 100% = locked pattern, 0% = fully random, 50% = recognizable but drifting.
 
-**mod depth** limits the swing to ±100% of the base value. A parameter set to 50% can be modulated up to 100% or down to 0%, but not beyond. Absolute parameter limits are always enforced on top of this.
+**Mod depth** limits swing to ±100% of the base value, clamped to parameter limits. **Mod direction:** + (up), - (down), + & - (bipolar).
 
-**mod direction** offers three modes: **+** (high register value pushes the parameter up), **-** (high register value pushes it down), and **+ & -** (bipolar – the register swings both ways from the base value).
+**Pitch glide** and **slew rate** are mutually exclusive. Pitch glide controls tape-speed transitions for time-based targets. Slew rate smooths discrete steps for everything else. At 0, both produce instant changes.
 
-**pitch glide** controls the transition time when delay times change. At 500 ms (default), time changes produce audible tape-speed pitch shifts – the buffer content plays back faster or slower as the read head catches up. Lower values make the transition quicker and more abrupt. Higher values stretch it out into subtle, long detuning. At 0 ms, changes are instant (clicks possible). Only visible when assign target is **time div** or **tap time** – for all other targets, **slew rate** is shown instead. The two are mutually exclusive because combining pitch glide with parameter slew produces unpredictable interactions.
+**Step rate** ranges from 4/1 (one step per four bars) to 1/16.
 
-**step rate** includes slower rates: **4/1** and **2/1**. At 60 BPM, 4/1 means one TM step every 16 seconds – the register shifts at geological speed.
+Modulated parameters are marked **(M)** in the parameter menu.
 
-**slew rate** at 0 ms means instant, hard steps – gate-like modulation. At 500 ms, transitions are smooth. At 2000 ms, the shift register's discrete steps dissolve into slow, flowing movement.
-
-Parameters currently being modulated by the TM are marked with **(M)** in the parameter menu.
-
-**Available targets:**
+**Targets:**
 
 | Target | What it modulates | Per-line? |
 |--------|-------------------|-----------|
@@ -211,14 +170,14 @@ Parameters currently being modulated by the TM are marked with **(M)** in the pa
 | **tap balance** | Per-line stereo position | yes |
 | **tap feedback** | Per-line feedback amount | yes |
 | **tap level** | Per-line output volume | yes |
-| **tap time** | Per-line delay time directly | yes |
-| **time div** | Delay time divisions | yes |
+| **tap time** | Per-line delay time (msec taps only) | yes |
+| **time div** | Delay time divisions (note taps only) | yes |
 
-For per-line targets, each line reads the shift register from a different bit rotation – four related but distinct modulation values from one pattern.
+For per-line targets, each line reads the register from a different bit rotation – four related but distinct values from one pattern. **Time div** and **tap time** respect the feel setting: time div only affects taps in note/dotted/triplet mode, tap time only affects taps in msec mode.
 
 ### Every x/y do z
 
-Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. A toggle mechanism: every X of Y beats, the action fires. Next X of Y beats, it undoes itself.
+Clock-synced disruptions inspired by [Monome Teletype](https://monome.org/docs/teletype/). A toggle: every X of Y beats the action fires, next X of Y it undoes itself.
 
 | Parameter | Range | Default |
 |-----------|-------|---------|
@@ -229,71 +188,160 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 | **reset after** | off / 2–64 | off |
 | **slew rate** | 0–2000 ms | 0 |
 
-The **every** and **of** parameters combine to set the event timing: every 1 of 8 = every 8th beat. Every 3 of 16 = every 3/16 note. Odd denominators are supported – every 1 of 7 creates a 7-beat cycle, every 3 of 5 creates a pattern that phases against 4/4 time.
+**Every** and **of** combine for timing: every 1 of 8 = every 8th beat. Odd denominators create phasing against 4/4. **Slew rate** is independent of the TM's slew; TM slew restores after each undo.
 
-**slew rate** controls the transition speed for event actions independently of the TM's slew rate. The TM slew is restored after each event undo.
+**Chance** gates event triggers probabilistically. A missed trigger extends the current state. **Reset after** counts successful toggles and restarts the clock, preventing indefinite drift.
 
-**chance** adds a probability gate. When set, each event trigger has only that percentage chance of actually firing. A missed trigger means the current state persists – if balance is flipped, it stays flipped until chance lets the next toggle through. This creates unpredictable extensions of event durations. Use **reset after** as a safety net.
+Affected parameters are marked **(M)**.
 
-**reset after** counts event toggles and restarts the event clock after the specified number of activations. Example: `every 1 of 7, reset after 8` runs a 7-beat cycle but re-syncs after 8 toggles. Combined with chance, this prevents events from drifting indefinitely when triggers are skipped.
-
-Parameters affected by an active event are marked with **(M)** in the parameter menu.
-
-**Actions:**
-
-- **flip balance** – all balance positions negate. The stereo image mirrors every X of Y beats. (M) on: tap 1–4 balance.
-- **mute send** – input VCA drops to zero. Existing echoes ring out but nothing new enters. The delay tail decays cleanly.
-- **mute taps** – all line levels drop to zero. Silence, then restoration. (M) on: tap 1–4 level.
-- **all feedback min** – all feedback snaps to zero. Echoes die immediately. (M) on: tap 1–4 feedback.
-- **all feedback max** – all feedback snaps to 105%. Sudden, intense resonance. (M) on: tap 1–4 feedback.
-- **stability -5% / -10% / -25%** – temporarily reduces the shift register's step stability, injecting more randomness into the TM pattern. Reverts on undo. (M) on: step stability.
-- **flip levels** – mirrors each tap's level around 50%: a tap at 25% becomes 75%, at 100% becomes 0%, at 50% stays put. Self-undoing (flip twice = original). Inverts the volume hierarchy – quiet background taps become foreground and vice versa. (M) on: tap 1–4 level.
-
-## Recipes
-
-**Ambient wash.** Active taps = 4. All four lines in note mode: 1/1, 1/2, 1/4, 1/8. Frequency bottom = 20 hz, top = 1500 hz, slope = 24 dB. Saturation = 15%. Feedback at 40% per line. Chorus depth = 15%, rate = 0.2 hz. Play sparse notes and let the echoes build into a bed.
-
-**Dub delay.** Active taps = 1. Dotted 1/4, feedback = 60%. Frequency bottom = 20 hz, top = 2000 hz, 12 dB. Saturation = 40%. The classic: sparse phrases with long echoes that fill the space between notes.
-
-**Rhythmic gate.** Active taps = 4. TM steps = 8, assign target = tap level, mod direction = -, mod depth = 100%, step rate = 1/8, slew rate = 0 ms. Four lines stutter independently in a polyrhythmic pattern. Step stability = 20% for slow evolution. Lock it at 100% when you find a good one.
-
-**Tape degradation.** Saturation = 50%, frequency bottom = 20 hz, top = 1200 hz, slope = 48 dB. Each repetition sounds darker and grittier. Add chorus depth = 10%, rate = 0.5 hz for wobble.
-
-**Structural rhythm.** Every 1 of 8, assign target = flip balance. Every bar the stereo image mirrors. Combined with the TM on tap levels at a different rate, this creates large-scale rhythmic architecture from two simple mechanisms running at different speeds.
-
-**FM delay.** Chorus rate = 3000 hz, depth = 60%. Frequency bottom = 200 hz, top = 20000 hz to strip the fundamentals. The echoes become metallic, bell-like – pure sidebands. The delay stops sounding like a delay and starts sounding like a synthesizer.
-
-**Controlled chaos.** Active taps = 4. TM steps = 12, assign target = time div, mod bottom = 1/8, mod top = 1/64, step stability = 40%, step rate = 1/4. Every 3 of 7, assign target = stability -25%, chance = 70%, reset after = 8. The four lines constantly shift time divisions. The stability reduction fires unpredictably but resets before it drifts too far.
-
-**Slapback + drone.** Active taps = 2. Line 1: feel = msec, time = 80 ms, feedback = 10%, balance = -0.7. A tight slapback on the left. Line 2: feel = note, time div = 1/1, feedback = 90%, balance = 0.7. A slow, self-oscillating drone on the right. Same source signal, two completely different instruments.
-
-**Resonant sweep.** Frequency bottom = 200 hz, top = 800 hz, slope = 24 dB, resonance = 70%. TM steps = 8, assign target = filter frequency, step rate = 1/4, slew rate = 500 ms. Both cutoff edges resonate independently as the TM sweeps the filter window up and down. The bottom edge sings differently from the top.
-
-**Crossfeed conversation.** Active taps = 4. All lines at 1/4, 1/8, 1/16, 1/32. Crossfeed = 30%, feedback = 35% per line. The signal circulates between paired taps, creating patterns denser than any single delay.
+**Actions:** **flip balance** mirrors the stereo image. **mute send** stops input, existing echoes ring out. **mute taps** silences all lines. **all feedback min/max** snaps feedback to 0% or 105%. **stability -5%/-10%/-25%** injects randomness into the TM. **flip levels** mirrors each tap's level around 50%.
 
 ## Safety
 
-fx_llll allows per-line feedback up to 105% – above unity gain. This means the signal grows with each repetition. The tanh limiter in the feedback path prevents digital clipping, but the resulting audio can still be extremely loud and spectrally dense.
+Feedback up to 105% means the signal grows with each repetition. The tanh limiter prevents clipping but the result can be extremely loud. At feedback above ~80% with multiple lines, expect self-oscillation. Crossfeed compounds this – moderate crossfeed with moderate feedback can produce more energy than either alone.
 
-At feedback above ~80% per line with multiple lines active, the delay will self-oscillate. This is a feature – it's how many classic ambient and noise textures are created. But it requires awareness.
-
-Crossfeed adds another dimension of feedback energy. Even moderate crossfeed with moderate per-line feedback can create runaway buildup, because the total feedback path is now longer than any individual line.
-
-**Recommendations:**
-
-- **Use a limiter** on the norns output or on the next device in your signal chain.
-- **Start at low volume** when experimenting with high feedback. Self-oscillating delays can build gradually and then suddenly peak.
-- **Saturation helps.** At 20–30%, the tanh waveshaping adds compression that tames peaks.
-- **The event system is your safety net.** Set assign target = "all feedback min" at a slow rate as a periodic reset while exploring extreme settings.
-- **Be cautious with crossfeed.** Crossfeed at 50% with feedback at 50% produces more total feedback energy than you might expect. Start crossfeed low.
-- **Protect your hearing.** This is not a disclaimer for legal purposes. It's genuine advice from someone who has startled himself more than once with this effect.
+Use a limiter on the norns output. Start at low volume. Saturation at 20–30% adds compression that tames peaks. The event system can serve as a safety net: set assign target to "all feedback min" at a slow rate.
 
 ## Known issues
 
-- **Send A/B routing** may not produce audible output depending on the host script's audio routing. This is a limitation of the fx mod framework's send bus architecture, not an fx_llll bug. Use insert mode for reliable operation.
-- **Insert dry/wet** behavior depends on the fx mod framework's replacer synth. At extreme settings, the crossfade may not behave as expected.
-- **Filter CPU at 48 dB:** The bandpass at 48 dB runs four cascaded RLPF + RHPF stages. This is the most CPU-intensive configuration. If CPU is tight, use 6 or 12 dB.
-- **Crossfeed + high feedback** can produce rapid, loud self-oscillation that the tanh limiter catches but doesn't silence. This is by design, but it can surprise you.
+- **Send A/B routing** may not produce output depending on the host script's routing. Use insert mode.
+- **Insert dry/wet** behavior depends on the fx mod framework's replacer synth.
+- **Filter at 48 dB** runs four cascaded RLPF + RHPF stages in both the output and feedback paths – the most CPU-intensive configuration. If CPU is tight, use 6 or 12 dB.
+- **Crossfeed + high feedback** can produce rapid self-oscillation.
+
+## User stories
+
+### 1.0
+
+**Delay fundamentals**
+
+- As a musician, I want four independent delay lines, so that I can create multiple rhythmically offset echoes from a single source.
+- As a musician, I want a choice between tempo-synced note values and free milliseconds per tap, so that I can mix clock-locked and free-running delay times within the same effect.
+- As a musician, I want four feel modes (note, dotted, triplet, msec), so that I can select straight, dotted, and triplet subdivisions directly alongside free timing.
+- As a musician, I want note values from 1/1 to 1/64, so that I can cover a wide range of musically useful delay times.
+- As a musician, I want individual level, pan, and feedback values per tap, so that I can shape four distinct delay voices with different character from one effect.
+- As a musician, I want a maximum delay time of 1 second per line, so that memory usage on the norns stays manageable.
+- As a musician, I want delay times to update automatically on tempo changes, so that no manual adjustments are needed while the clock is running.
+
+**Filter, saturation, chorus**
+
+- As a musician, I want a multimode filter (LP/BP/HP) in the output path, so that every echo – including the first – is tonally shaped.
+- As a musician, I want selectable filter slopes (6/12/24/48 dB), so that I can match the filter intensity to the context.
+- As a musician, I want separate frequency parameters for top and bottom in bandpass mode, so that I can define a precise frequency window.
+- As a musician, I want tanh saturation in the output path, so that I can add warmth or distortion to the echoes.
+- As a musician, I want a chorus in the output path with an extreme frequency range, so that I can cover the spectrum from tape wobble to ring modulation.
+
+**Feedback**
+
+- As a musician, I want feedback up to 105%, so that I can use controlled self-oscillation as a creative tool.
+- As a musician, I want a tanh limiter in the feedback path, so that feedback above unity gain doesn't produce digital clipping.
+- As a musician, I want processing (filter, saturation, chorus) only in the output path, so that even the first echo has full tonal character.
+
+**Turing Machine**
+
+- As a musician, I want a shift register based on the Turing Machine principle, so that parameters evolve over time in patterns that are steerable but not fully predictable.
+- As a musician, I want a stability control (0–100%), so that I can determine how much the pattern mutates between exact repetition and full randomness.
+- As a musician, I want 10 modulation targets (chorus depth/rate, feedback, filter, saturation, send level, subdiv, tap level, tap pan, tap time), so that I can modulate different aspects of the delay with the shift register.
+- As a musician, I want each tap to read the register from a different bit position, so that per-line targets produce four related but distinct modulation values from one pattern.
+- As a musician, I want adjustable mod depth and mod direction, so that I can set the modulation range and direction (unipolar/bipolar) per target.
+- As a musician, I want selectable step rates (1/1 to 1/16), so that I can match the register's shift speed to the tempo.
+- As a musician, I want a slew rate parameter, so that I can smooth the register's discrete steps into flowing transitions.
+- As a musician, I want mod bottom and mod top displayed instead of mod depth and direction when the subdiv target is selected, so that I can directly define the range of note values the register picks from.
+
+**Event system**
+
+- As a musician, I want a clock-synced event system (every X of Y, do Z), so that I can trigger structural disruptions – muting, pan flips, feedback extremes – at rhythmic intervals.
+- As a musician, I want events to function as toggles (fire once, undo on the next cycle), so that the disruptions are self-regulating.
+- As a musician, I want odd denominators (e.g. every 1 of 7), so that I can create cycles that phase against a 4/4 grid.
+- As a musician, I want a separate slew rate parameter for events, so that I can control the transition speed independently of the TM slew rate.
+- As a musician, I want the actions flip pans, mute send, mute taps, all fb min, all fb max, and stability reductions, so that I have a broad palette of structural interventions.
+
+**UX**
+
+- As a musician, I want modulated parameters marked with (M) in the menu, so that I can see at a glance what the TM and the event system are currently controlling.
+- As a musician, I want context-dependent parameters (subdiv/time depending on feel, freq/freq bottom+top depending on filter type) to show and hide automatically, so that the menu only displays relevant options.
+
+### 2.0
+
+**Stereo signal path**
+
+- As a musician, I want a full stereo signal path throughout, so that the spatial character of my input survives into every echo instead of being collapsed to mono and re-panned.
+- As a musician, I want balance (stereo image preservation) instead of pan (mono repositioning), so that a stereo source remains wide at the default center setting.
+
+**Feedback path processing**
+
+- As a musician, I want filter and saturation to accumulate in the feedback path, so that each repetition gets progressively darker and more compressed – like a tape delay where echo 10 is a ghost of echo 1.
+- As a musician, I want the feedback path to use the same filter and saturation settings as the output path, so that I don't need separate controls for feedback processing.
+- As a musician, I want chorus to remain output-only, so that accumulating pitch modulation doesn't detune the feedback loop.
+
+**Active taps**
+
+- As a musician, I want to choose how many taps are active (1–4), so that unused lines don't clutter the sound or the parameter menu.
+- As a musician, I want inactive taps to be fully hidden in the menu, so that the parameter list stays concise.
+- As a musician, I want quieter defaults (levels 50/25/10/5%, feedback 25%, balance centered), so that the first encounter with the effect is a clean starting point rather than four loud competing lines.
+
+**Filter**
+
+- As a musician, I want a single always-on bandpass with two frequency knobs instead of three parallel filter types, so that the filter uses less CPU and I can carve a frequency window from both ends simultaneously.
+- As a musician, I want resonance on both cutoff edges independently, so that the bottom and top of the bandpass can sing at different frequencies.
+- As a musician, I want a resonance curve where self-oscillation starts around 75% at 48 dB, so that the majority of the control range is musically usable.
+- As a musician, I want resonance hidden at 6 dB slope, so that no parameter is displayed that has no effect with OnePole.
+- As a musician, I want a filter type shortcut (low/band/high) that sets the frequencies to common starting points, so that I can quickly reach a familiar configuration without losing manual control.
+- As a musician, I want filter type to not lock the frequencies, so that I can freely adjust both frequencies after selecting a type.
+
+**Crossfeed**
+
+- As a musician, I want crossfeed between paired taps (1↔3, 2↔4), so that signal circulates between the delay lines and creates feedback paths longer than individual tap times.
+
+**Pitch glide**
+
+- As a musician, I want pitch glide as an adjustable parameter (0–2500 ms) instead of a hardcoded value, so that I can control whether delay time changes sound like a hard cut, a tape-speed shift, or a slow detuning.
+- As a musician, I want pitch glide and slew rate to be mutually exclusive, so that time-based modulation uses pitch glide and all other modulation uses slew rate without confusing interactions.
+- As a musician, I want pitch glide only visible when the TM target is time-based (time div or tap time), so that only context-relevant parameters are shown.
+
+**Turing Machine 2.0**
+
+- As a musician, I want crossfeed and filter resonance as additional TM targets, so that the shift register can modulate the spatial interaction between taps and the filter's tonal character.
+- As a musician, I want slower step rates (4/1 and 2/1), so that the register can shift at geological speed for ambient work.
+- As a musician, I want time div to only modulate taps in note/dotted/triplet mode and tap time to only modulate taps in msec mode, so that the feel setting is respected and both timing modes aren't overridden simultaneously.
+- As a musician, I want consistent naming of TM targets (tap feedback, filter frequency, filter resonance), so that the mapping to the actual parameter is unambiguous.
+
+**Event system 2.0**
+
+- As a musician, I want a chance parameter on event triggers, so that disruptions fire probabilistically and event durations become unpredictable.
+- As a musician, I want a reset counter, so that the event clock restarts after a set number of toggles and prevents skipped triggers from causing indefinite drift.
+- As a musician, I want a flip levels action, so that I can invert the volume hierarchy of the taps – quiet becomes loud, loud becomes quiet.
+- As a musician, I want switching event actions while an action is active to correctly restore all affected parameters, so that no state gets stuck (e.g. feedback doesn't stay at 105% when switching from all feedback max to off).
+
+**UX 2.0**
+
+- As a musician, I want parameters sorted alphabetically within each section, so that the parameter order is predictable and consistent.
+- As a musician, I want fully spelled-out parameter names instead of abbreviations (where space permits), so that naming is understandable without documentation.
+- As a musician, I want the assign target parameter in both TM and event system named identically, so that the assignment function of both sections is immediately recognizable.
+
+## Changelog
+
+### 2.0
+
+**Signal path:** Full stereo throughout. The delay lines no longer collapse to mono – `Balance2` replaces `Pan2`, preserving the input's stereo image into every echo and through the feedback loop.
+
+**Feedback path:** Filter and saturation now run in both the output and feedback paths (same settings). Processing accumulates across repetitions – each pass darkens and compresses the signal further. Chorus remains output-only. In 1.0, the feedback path was raw with only a tanh limiter.
+
+**Filter:** The three parallel filter chains (LP/BP/HP computed simultaneously, one selected at runtime) are replaced by a single always-on bandpass with two frequency parameters. Filter type (low/band/high) is now a convenience shortcut that sets the frequencies. Resonance parameter added (RLPF/RHPF at 12 dB and above). CPU usage drops significantly.
+
+**Taps:** Active taps parameter (1–4, default 1) – only selected taps are audible and visible. Defaults are quieter: levels 50/25/10/5%, feedback 25% all, balance centered. Subdivision renamed to time div.
+
+**Crossfeed:** New. Routes signal between paired taps (1↔3, 2↔4), creating feedback paths longer than individual delay times.
+
+**Pitch glide:** Was hardcoded at 200 ms. Now a parameter (0–2500 ms, default 500 ms), visible only when the TM targets time-based parameters. Mutually exclusive with slew rate to avoid unpredictable interactions.
+
+**Modulation TM:** 12 targets (was 10). Added crossfeed and filter resonance. Renamed feedback → tap feedback, filter → filter frequency. Step rate extended to 4/1 and 2/1. Time div and tap time now respect the feel setting – time div only modulates note/dotted/triplet taps, tap time only modulates msec taps.
+
+**Event system:** Three new features: chance (probability gate on triggers), reset after (restarts the event clock after N toggles), and flip levels (mirrors each tap's level around 50%). Switching actions while an event is active now correctly restores all affected parameters.
+
+### 1.0
+
+Initial release. Four delay lines with mono signal path, multimode filter (LP/BP/HP), per-tap feedback, Turing Machine modulation (10 targets), clock-synced event system.
 
 ## Dependencies
 
@@ -301,12 +349,8 @@ Crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 
 ## Credits
 
-Built on sixolet's [fx mod framework](https://llllllll.co/t/fx-mod-framework/), which made it possible to run custom effects alongside any norns script – the architecture that this entire project depends on.
+Built on sixolet's [fx mod framework](https://llllllll.co/t/fx-mod-framework/).
 
-The modulation TM section is directly inspired by Tom Whitwell's [Turing Machine](https://musicthing.co.uk/pages/turing.html) for Eurorack – a design that showed how a shift register with a probability knob can produce patterns that feel simultaneously structured and unpredictable.
+Modulation TM inspired by Tom Whitwell's [Turing Machine](https://musicthing.co.uk/pages/turing.html). Event system borrows the "every X do Y" paradigm from [Monome Teletype](https://monome.org/docs/teletype/). Crossfeed draws from the [SOMA Cosmos](https://somasynths.com/cosmos/).
 
-The event system borrows the "every X do Y" paradigm from [Monome Teletype](https://monome.org/docs/teletype/), a device that treats musical time as a programmable resource rather than just a grid to snap to.
-
-The sound and behavior of fx_llll draws from a long line of delays that taught me what makes echoes interesting: the **Roland RE-201 Space Echo**, the grandfather of characterful delay – where degradation, motor speed, and tape saturation aren't flaws but the whole point. **Strymon's Magneto and Volante**, which showed that tape delay emulation can be a creative instrument rather than just nostalgia. **Valhalla Delay** in Ableton Live, where I first discovered what happens when you route an LFO to a delay's parameters – the practice that directly led to the modulation TM concept. The **Loudest Warning Analog Delay**, a 4U module that reminded me how much character lives in simplicity and saturation. The **XAOC Sarajewo** in Eurorack, whose approach to voltage-controlled delay time and feedback convinced me that a delay should be playable, not just configurable. And the crossfeed concept draws inspiration from the **SOMA Cosmos**, whose dual delay lines feeding into each other showed that the most interesting delay paths are circular.
-
-The name references the four delay lines, and [llllllll.co](https://llllllll.co/) – the lines forum, where we're all hanging out.
+Sound and behavior shaped by: **Roland RE-201 Space Echo**, **Strymon Magneto and Volante**, **Valhalla Delay**, **Loudest Warning Analog Delay**, **XAOC Sarajewo**.
