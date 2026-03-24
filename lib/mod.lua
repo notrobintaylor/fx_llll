@@ -75,14 +75,13 @@ local evt_denom_values = {}
 for i = 1, 32 do evt_denom_names[i] = tostring(i); evt_denom_values[i] = i end
 
 local event_action_names = {
-    "off","flip balance","mute send","mute taps",
-    "all feedback min","all feedback max",
-    "stability -5%","stability -10%","stability -25%",
-    "flip levels"
+    "off","all feedback max","all feedback min",
+    "flip balance","flip levels","mute send","mute taps",
+    "stability -5%","stability -10%","stability -25%"
 }
 
--- avoids three identical branches for actions 7/8/9
-local stab_reduce = {[7]=5, [8]=10, [9]=25}
+-- avoids three identical branches for actions 8/9/10
+local stab_reduce = {[8]=5, [9]=10, [10]=25}
 
 local reset_names = {"off"}
 for i = 2, 64 do reset_names[i] = tostring(i) end
@@ -336,16 +335,16 @@ local function evt_do()
     local a = event_state.action
     if a == 1 then return end
     send("slew", event_state.slew / 1000)
-    if a == 2 then for i=1,4 do send("bal"..i, -base["bal"..i]) end
-    elseif a == 3 then send("inputGain", 0)
-    elseif a == 4 then for i=1,4 do send("level"..i, 0) end
-    elseif a == 5 then for i=1,4 do send("feedback"..i, 0) end
-    elseif a == 6 then for i=1,4 do send("feedback"..i, FEEDBACK_MAX) end
+    if a == 2 then for i=1,4 do send("feedback"..i, FEEDBACK_MAX) end
+    elseif a == 3 then for i=1,4 do send("feedback"..i, 0) end
+    elseif a == 4 then for i=1,4 do send("bal"..i, -base["bal"..i]) end
+    elseif a == 5 then
+        for i=1,4 do send("level"..i, (100 - params:get("fx_ll_level_"..i)) / 100) end
+    elseif a == 6 then send("inputGain", 0)
+    elseif a == 7 then for i=1,4 do send("level"..i, 0) end
     elseif stab_reduce[a] then
         event_state.saved_stab = turing.stability
         turing.stability = math.max(0, turing.stability - stab_reduce[a])
-    elseif a == 10 then
-        for i=1,4 do send("level"..i, (100 - params:get("fx_ll_level_"..i)) / 100) end
     end
     mark_ids(evt_action_param_ids[a])
 end
@@ -354,10 +353,10 @@ local function evt_undo()
     local a = event_state.action
     if a == 1 then return end
     send("slew", event_state.slew / 1000)
-    if a == 2 then for i=1,4 do send("bal"..i, base["bal"..i]) end
-    elseif a == 3 then send("inputGain", base.inputGain)
-    elseif a == 4 or a == 10 then for i=1,4 do send("level"..i, base["level"..i]) end
-    elseif a == 5 or a == 6 then for i=1,4 do send("feedback"..i, base["feedback"..i]) end
+    if a == 2 or a == 3 then for i=1,4 do send("feedback"..i, base["feedback"..i]) end
+    elseif a == 4 then for i=1,4 do send("bal"..i, base["bal"..i]) end
+    elseif a == 5 or a == 7 then for i=1,4 do send("level"..i, base["level"..i]) end
+    elseif a == 6 then send("inputGain", base.inputGain)
     elseif stab_reduce[a] then turing.stability = event_state.saved_stab
     end
     unmark_ids(evt_action_param_ids[a])
@@ -743,17 +742,17 @@ function FxLlll:add_params()
     evt_action_param_ids[4] = {}
     evt_action_param_ids[5] = {}
     evt_action_param_ids[6] = {}
-    evt_action_param_ids[10] = {}
+    evt_action_param_ids[7] = {}
     for i=1,4 do
-        table.insert(evt_action_param_ids[2], "fx_ll_bal_"..i)
-        table.insert(evt_action_param_ids[4], "fx_ll_level_"..i)
-        table.insert(evt_action_param_ids[5], "fx_ll_feedback_"..i)
-        table.insert(evt_action_param_ids[6], "fx_ll_feedback_"..i)
-        table.insert(evt_action_param_ids[10], "fx_ll_level_"..i)
+        table.insert(evt_action_param_ids[2], "fx_ll_feedback_"..i)
+        table.insert(evt_action_param_ids[3], "fx_ll_feedback_"..i)
+        table.insert(evt_action_param_ids[4], "fx_ll_bal_"..i)
+        table.insert(evt_action_param_ids[5], "fx_ll_level_"..i)
+        table.insert(evt_action_param_ids[7], "fx_ll_level_"..i)
     end
-    evt_action_param_ids[7] = {"fx_ll_tm_step_stab"}
     evt_action_param_ids[8] = {"fx_ll_tm_step_stab"}
     evt_action_param_ids[9] = {"fx_ll_tm_step_stab"}
+    evt_action_param_ids[10] = {"fx_ll_tm_step_stab"}
 
     vis_active_taps()
     vis_filter()
