@@ -375,8 +375,8 @@ crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **Use a limiter** on the norns output or on the next device in your signal chain.
 - **Start at low volume** when experimenting with high feedback.
 - **saturation helps.** At 20–30%, the tanh waveshaping adds compression that tames peaks.
-- **the event system is your safety net.** Set assign target = "all feedback min" at a slow rate while exploring extreme settings.
-- **be cautious with crossfeed.** Start low.
+- **The event system is your safety net.** Set assign target = "all feedback min" at a slow rate while exploring extreme settings.
+- **Be cautious with crossfeed.** Start low.
 - **Protect your hearing.** Genuine advice from someone who has startled himself more than once.
 
 ## Known issues
