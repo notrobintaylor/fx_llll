@@ -1,14 +1,14 @@
 # fx_llll
 
-### a multitap delay for the fx mod framework
+### A multitap delay for the fx mod framework
 
 [![fx_llll demo](https://img.youtube.com/vi/Su__MGkrTwU/maxresdefault.jpg)](https://www.youtube.com/watch?v=Su__MGkrTwU)
 
 fx_llll is a four-tap stereo delay mod for monome norns. Full stereo signal path, a bandpass filter with resonance, saturation, chorus, crossfeed between taps, a MTM TM-inspired shift register for modulation, and a clock-synced event system.
 
-## what it does
+## What it does
 
-**four lines, each with their own feel.** You can run line 1 at 1/1, line 2 at a dotted 1/4, line 3 at 1/8 triplet, and line 4 at a fixed 200ms completely independent of tempo. Mix freely. The delays pitch-shift when they change timing. This is deliberate and nicely exploitable. The delay lines allow feedback past unity. The feedback path has a tanh limiter that soft-clips the signal rather than letting it blow up. At high feedback you get warm, saturated self-oscillation rather than digital destruction. Please go ahead and use a limiter downstream or hearing protection. I mean it.
+**Four lines, each with their own feel.** You can run line 1 at 1/1, line 2 at a dotted 1/4, line 3 at 1/8 triplet, and line 4 at a fixed 200ms completely independent of tempo. Mix freely. The delays pitch-shift when they change timing. This is deliberate and nicely exploitable. The delay lines allow feedback past unity. The feedback path has a tanh limiter that soft-clips the signal rather than letting it blow up. At high feedback you get warm, saturated self-oscillation rather than digital destruction. Please go ahead and use a limiter downstream or hearing protection. I mean it.
 
 **filter / saturation / chorus** sit in the output path, so every echo has full character. Bandpass with selectable slopes and resonance. Saturation from subtle warmth to crunch. Chorus from gentle wobble all the way to audio-rate FM if you're into that sort of thing.
 
@@ -18,7 +18,7 @@ fx_llll is a four-tap stereo delay mod for monome norns. Full stereo signal path
 
 **every x/y do z** enables clock-synced events. Every *n* beats, something happens. Choose assign the modulation to a list of pre-defined (and musically tested) targets. Next *n* beats, it undoes itself. Structural rhythm layered on top of whatever the delay is already doing.
 
-## signal flow
+## Signal flow
 
 ```
 input --> send level --> + --> delay lines (stereo) --> active taps gate
@@ -46,9 +46,9 @@ input --> send level --> + --> delay lines (stereo) --> active taps gate
 
 When delay times change, whether you turn an encoder, switch time divisions, or the shift register mutates, you hear pitch sweep as the lines catch up. The **pitch glide** parameter controls this transition time (0–2500 ms, default 500 ms).
 
-## install
+## Install
 
-**via Maiden (recommended):** Open `http://norns.local/maiden`, type the following into the matron REPL at the bottom:
+**Via Maiden (recommended):** Open `http://norns.local/maiden`, type the following into the matron REPL at the bottom:
 
 ```
 ;install https://github.com/notrobintaylor/fx_llll
@@ -56,7 +56,7 @@ When delay times change, whether you turn an encoder, switch time divisions, or 
 
 Restart norns, activate under **SYSTEM > MODS**, restart again.
 
-**via SSH (manual):**
+**Via SSH (manual):**
 
 ```bash
 ssh we@norns.local
@@ -66,7 +66,7 @@ git clone https://github.com/notrobintaylor/fx_llll.git fx_llll
 
 Restart norns, activate under **SYSTEM > MODS**, restart again.
 
-## parameters
+## Parameters
 
 Parameters within each section are sorted alphabetically. Context-dependent params appear and disappear based on the current settings.
 
@@ -162,7 +162,7 @@ A shift register inspired by Tom Whitwell's [Turing Machine](https://musicthing.
 
 **modulation isolation:** "time div" only modulates taps in note/dotted/triplet feel. "tap time" only modulates taps in msec feel. The two don't cross.
 
-**available targets:**
+**Available targets:**
 
 | Target | What it modulates | Per-line? |
 |--------|-------------------|-----------|
@@ -196,7 +196,7 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 **actions:** all feedback max, all feedback min, flip balance, flip levels, mute send, mute taps, stability -5%/-10%/-25%.
 
-## user stories
+## User stories
 
 ### 1.0
 
@@ -282,7 +282,7 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 - I want (M) markers on event-affected params so that I can see which parameters are currently overridden.
 
-**infrastructure**
+**Infrastructure**
 
 - I want the mod to work with any script via the fx mod framework so that I don't have to choose between fx_llll and my favorite sequencer.
 
@@ -292,7 +292,7 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 ### 2.0
 
-**architecture**
+**Architecture**
 
 - I want a full stereo signal path so that the input's spatial character survives into every echo instead of being collapsed to mono.
 
@@ -352,7 +352,7 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 - I want force-restore when switching event actions so that changing or disabling an action immediately returns all affected parameters to their base values without stale state.
 
-**defaults and naming**
+**Defaults and naming**
 
 - I want quieter defaults (levels 50/25/10/5, feedback 25%) so that the first encounter is inviting rather than overwhelming.
 
@@ -366,11 +366,11 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 - I want context-dependent parameter visibility so that I only see parameters relevant to my current settings.
 
-## safety
+## Safety
 
 crossfeed adds another dimension of feedback energy. Even moderate crossfeed with moderate feedback can build up, because the total feedback path is longer than any individual line.
 
-**recommendations:**
+**Recommendations:**
 
 - **Use a limiter** on the norns output or on the next device in your signal chain.
 - **Start at low volume** when experimenting with high feedback.
@@ -379,18 +379,18 @@ crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - **be cautious with crossfeed.** Start low.
 - **Protect your hearing.** Genuine advice from someone who has startled himself more than once.
 
-## known issues
+## Known issues
 
 - **send A/B routing** may not produce audible output depending on the host script's audio routing. Use insert mode for reliable operation.
 - **insert dry/wet** behavior depends on the fx mod framework's replacer synth.
 - **filter CPU at 48 dB:** Four cascaded RLPF + RHPF stages. If CPU is tight, use 6 or 12 dB.
 - **crossfeed + high feedback** can produce rapid, loud self-oscillation.
 
-## changelog
+## Changelog
 
 ### 2.0
 
-**architecture**
+**Architecture**
 
 - Full stereo signal path. No mono collapse. `Balance2` replaces `Mix.ar` + `Pan2.ar`. The input's stereo image survives into every echo. Balance at 0 means "pass through unchanged."
 - Bandpass-only filter. The filter type selector (low/band/high) now sets starting frequencies rather than switching filter topology. Two frequency knobs always define the passband window. One chain instead of three parallel chains = significant CPU savings.
@@ -399,7 +399,7 @@ crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - Crossfeed between taps. Pairs 1↔3 and 2↔4. Additive: signal circulates between paired taps, creating feedback paths longer than any individual delay.
 - Pitch glide as parameter. Delay time transitions via `.lag()` on `DelayC`. varispeed tape behavior. Range 0–2500 ms (default 500 ms). Mutually exclusive with slew rate in the TM section.
 
-**modulation**
+**modulation TM**
 
 - 12 TM targets (was 10). New: crossfeed, filter resonance. Renamed: feedback → tap feedback, filter → filter frequency.
 - Modulation isolation. "time div" only affects note/dotted/triplet taps. "tap time" only affects msec taps. They don't cross-contaminate.
@@ -413,12 +413,12 @@ crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 - Reset after parameter. Counts successful toggles, restarts clock. Safety net for chance.
 - Force-restore on action change. Switching or disabling the event action immediately restores all affected parameters to base values. Fixes the stale-feedback bug.
 
-**defaults**
+**Defaults**
 
 - Quieter: levels 50/25/10/5 (was 100/75/50/25), feedback 25% (was 50%), all pans centered (was alternating L/R).
 - Filter defaults to low (bottom=20, top=2500) instead of bypass.
 
-**naming**
+**Naming**
 
 - pan → balance (reflects stereo behavior, not mono placement)
 - subdiv → time div
@@ -430,11 +430,11 @@ crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 
 Initial release. Four delay lines, multimode filter, saturation, chorus, Turing Machine modulation, clock-synced event system.
 
-## dependencies
+## Dependencies
 
 - [fx mod framework](https://llllllll.co/t/fx-mod/62726)
 
-## inspirations
+## Inspirations
 
 Built on [fx mod framework](https://llllllll.co/t/fx-mod/62726) by @sixolet, which made it possible to run custom effects alongside any norns script. fx is the architecture that this entire project depends on.
 
