@@ -366,6 +366,22 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 
 - I want context-dependent parameter visibility so that I only see parameters relevant to my current settings.
 
+### 2.1
+
+**Slot management**
+
+- I want send a and send b to work independently of the fx mod so that I can route the delay to the norns send buses without the fx framework's replacer synth being involved.
+
+- I want the insert dry/wet blend to follow an equal power curve (cosine for dry, sine for wet) so that the perceived loudness stays constant at any blend position — no −3 dB dip at 50%.
+
+- I want slot switching to be click-free so that changing between none, send a, send b, and insert during a live performance is sonically transparent.
+
+- I want a short fade on the fx send level when switching slots so that the audio transitions smoothly without abrupt gain changes on the send bus.
+
+- I want fx spillover when I deselect a slot so that the delay lines keep running freely — the fx send input is muted (faded), but the trails ring out in full for as long as the current delay time and feedback dictate, whether that is one second or twenty.
+
+- I want the fx send input to stay muted until a new slot is selected so that no dry signal leaks into an unowned effect bus between slot changes.
+
 ## Safety
 
 crossfeed adds another dimension of feedback energy. Even moderate crossfeed with moderate feedback can build up, because the total feedback path is longer than any individual line.
@@ -381,12 +397,20 @@ crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 
 ## Known issues
 
-- **send A/B routing** may not produce audible output depending on the host script's audio routing. Use insert mode for reliable operation.
-- **insert dry/wet** behavior depends on the fx mod framework's replacer synth.
+- **filter CPU at 48 dB:** Four cascaded RLPF + RHPF stages. If CPU is tight, use 6 or 12 dB.
 - **filter CPU at 48 dB:** Four cascaded RLPF + RHPF stages. If CPU is tight, use 6 or 12 dB.
 - **crossfeed + high feedback** can produce rapid, loud self-oscillation.
 
 ## Changelog
+
+### 2.1
+
+**Slot management**
+
+- Equal power dry/wet blend. Insert crossfade now follows a cosine/sine law (dry = cos(drywet · π/2), wet = sin(drywet · π/2)). Perceived loudness is constant at any blend position. The previous linear 0–1 crossfade produced a −3 dB dip at 50% because equal amplitudes summed to −3 dB at the mid-point.
+- Click-free slot switching. A short fade (≈20 ms) on the fx send level precedes every slot change. Abrupt slot transitions on the send bus produced audible clicks in 1.x and 2.0.
+- FX spillover / trails. On slot deselect the fx send input is muted (faded); the delay lines keep running and ring out in full. Trails last as long as the current delay time and feedback dictate — no fixed timeout. The previous implementation cut the send immediately, truncating echoes.
+- Send a / send b independence. Sends route to the norns send buses without depending on the replacer synth's insert path. The 1.x/2.0 known issue (sends may not produce audible output) is resolved by decoupling send routing from the insert mechanism.
 
 ### 2.0
 
