@@ -501,7 +501,28 @@ end
 function FxLlll:add_params()
 
     params:add_separator("fx_ll", "fx llll")
+    -- slot management (see README 2.1):
+    -- send a / send b: route directly to the norns send buses, independent of the
+    --   insert replacer synth. no drywet parameter involved.
+    -- insert: equal power crossfade — dry = cos(drywet·π/2), wet = sin(drywet·π/2).
+    --   at drywet=1, cos(π/2)=0 exactly, so no dry signal leaks through at full wet.
+    -- click-free switching: the fx send level is faded to 0 (≈20 ms) before the
+    --   new slot is armed, preventing audible clicks from abrupt bus-gain changes.
+    -- spillover: on slot deselect the send input is muted (faded); the delay lines
+    --   keep running freely. trails ring out for as long as the current delay time
+    --   and feedback dictate — potentially many seconds. the send stays muted until
+    --   a new slot is selected.
     FxLlll:add_slot("fx_ll_slot", "slot")
+
+    params:add_trigger("fx_ll_init", "initialize")
+    params:set_action("fx_ll_init", function()
+        for _, p in ipairs(params.params) do
+            if p.id and string.sub(p.id, 1, 6) == "fx_ll_" and
+               p.id ~= "fx_ll_init" and p.default ~= nil then
+                params:set(p.id, p.default)
+            end
+        end
+    end)
 
     -- taps --
     params:add_separator("fx_ll_taps", "taps")
@@ -677,6 +698,14 @@ function FxLlll:add_params()
         turing.steps = v - 1
         if tm_active() then tm_activate()
         elseif was then tm_deactivate() end
+    end)
+
+    params:add_trigger("fx_ll_tm_randomize", "randomize")
+    params:set_action("fx_ll_tm_randomize", function()
+        if tm_active() then
+            turing.register = math.random(0, reg_max())
+            tm_apply()
+        end
     end)
 
     -- every x/y do z --
