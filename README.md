@@ -76,6 +76,8 @@ Parameters within each section are sorted alphabetically. Context-dependent para
 |-----------|---------|
 | **slot** | none / send a / send b / insert |
 
+In the insert slot the plugin overwrites the fx mod's wet bus instead of adding to it, so it works with every version of the fx mod (older versions never clear that bus, and an additive write piled up). In send a / send b it adds to the norns output as before.
+
 ### taps
 
 Select how many lines are active with **active taps** (1–4, default 1). Inactive taps are muted and their parameters hidden.
@@ -189,7 +191,7 @@ Clock-synced disruptions inspired by Monome Teletype's "every X do Y" paradigm. 
 | **chance** | off / 1–100% | off | always |
 | **every** | 1–8 | 1 | always |
 | **of** | 1–32 | 8 | always |
-| **reset after** | off / 2–64 | off | always |
+| **reset after** | off / 1–63 | off | always |
 | **slew rate** | 0–2000 ms | 0 | always |
 
 **chance** adds a probability gate. A missed trigger means the current state persists. **reset after** counts successful toggles and restarts the clock as a safety net for chance.
@@ -397,7 +399,6 @@ crossfeed adds another dimension of feedback energy. Even moderate crossfeed wit
 
 ## Known issues
 
-- **filter CPU at 48 dB:** Four cascaded RLPF + RHPF stages. If CPU is tight, use 6 or 12 dB.
 - **filter CPU at 48 dB:** Four cascaded RLPF + RHPF stages. If CPU is tight, use 6 or 12 dB.
 - **crossfeed + high feedback** can produce rapid, loud self-oscillation.
 

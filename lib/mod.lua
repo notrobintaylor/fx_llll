@@ -1,11 +1,8 @@
--- fx_llll — see README.md for parameters, signal flow, and design notes
-
 local fx = require("fx/lib/fx")
 local mod = require 'core/mods'
 local hook = require 'core/hook'
 local tab = require 'tabutil'
 
--- post-init hack: fx mod framework lacks script_post_init
 if hook.script_post_init == nil and mod.hook.patched == nil then
     mod.hook.patched = true
     local old_register = mod.hook.register
@@ -49,7 +46,6 @@ local filter_slope_names = {"6 dB", "12 dB", "24 dB", "48 dB"}
 local step_rate_names = {"4/1","2/1","1/1","1/2","1/4","1/8","1/16"}
 local step_rate_beats = {16, 8, 4, 2, 1, 0.5, 0.25}
 
--- numbered to match target_names index
 local TARGET = {
     CHORUS_DEPTH=1, CHORUS_RATE=2, CROSSFEED=3,
     FILTER_FREQ=4, FILTER_RES=5,
@@ -80,11 +76,10 @@ local event_action_names = {
     "stability -5%","stability -10%","stability -25%"
 }
 
--- avoids three identical branches for actions 8/9/10
 local stab_reduce = {[8]=5, [9]=10, [10]=25}
 
 local reset_names = {"off"}
-for i = 2, 64 do reset_names[i] = tostring(i) end
+for i = 1, 63 do reset_names[i + 1] = tostring(i) end
 
 local function fmt_pct(param) return param:get() .. " %" end
 local function fmt_ms(param) return param:get() .. " ms" end
@@ -99,12 +94,15 @@ local function fmt_chance(param)
     return v == 0 and "off" or (v .. " %")
 end
 
+local function res_to_rq(v) return 10 ^ (-((v / 100) ^ 3) * 2) end
+
 -- =========================================================================
 -- (M) marker system
 -- =========================================================================
 
 local target_param_ids = {}
 local original_names = {}
+local marker_refs = {}
 
 local function mark_ids(ids)
     if not ids then return end
@@ -113,9 +111,8 @@ local function mark_ids(ids)
         if idx then
             local p = params.params[idx]
             if not original_names[id] then original_names[id] = p.name end
-            if not string.find(p.name, "%(M%)") then
-                p.name = "(M) " .. original_names[id]
-            end
+            marker_refs[id] = (marker_refs[id] or 0) + 1
+            if marker_refs[id] == 1 then p.name = "(M) " .. original_names[id] end
         end
     end
     _menu.rebuild_params()
@@ -125,8 +122,12 @@ local function unmark_ids(ids)
     if not ids then return end
     for _, id in ipairs(ids) do
         local idx = params.lookup[id]
-        if idx and original_names[id] then
-            params.params[idx].name = original_names[id]
+        if idx and marker_refs[id] then
+            marker_refs[id] = marker_refs[id] - 1
+            if marker_refs[id] <= 0 then
+                marker_refs[id] = nil
+                if original_names[id] then params.params[idx].name = original_names[id] end
+            end
         end
     end
     _menu.rebuild_params()
@@ -155,7 +156,7 @@ local event_state = {
 local base = {
     inputGain=1.0,
     filterFreqBottom=20, filterFreqTop=2500,
-    resonance=1.0,
+    resonance=0,
     saturation=0, chorusDepth=0, chorusRate=1.0,
     crossfeed=0,
 }
@@ -186,19 +187,22 @@ end
 local function tap_mod(i)
     local m = reg_max()
     if m == 0 then return 0 end
-    return (((turing.register >> i) | (turing.register << (turing.steps - i))) & m) / m
+    local r = i % turing.steps
+    return (((turing.register >> r) | (turing.register << (turing.steps - r))) & m) / m
 end
 
 local function apply_mod(raw, bv, lo, hi)
     local d = turing.depth / 100
     local dir = turing.direction
-    local swing = bv * raw * d
-    if dir == 1 then return math.max(lo, math.min(hi, bv + swing))
-    elseif dir == -1 then return math.max(lo, math.min(hi, bv - swing))
-    else return math.max(lo, math.min(hi, bv + bv * (raw * 2 - 1) * d)) end
+    if dir == 1 then return math.max(lo, math.min(hi, bv + raw * d * (hi - bv)))
+    elseif dir == -1 then return math.max(lo, math.min(hi, bv - raw * d * (bv - lo)))
+    else
+        local b = (raw * 2 - 1) * d
+        if b > 0 then return math.max(lo, math.min(hi, bv + b * (hi - bv)))
+        else return math.max(lo, math.min(hi, bv + b * (bv - lo))) end
+    end
 end
 
--- sends all event-affected params to base immediately, skipping TM-owned ones
 local function force_restore_all()
     send("slew", 0)
     if not (tm_active() and turing.target == TARGET.SEND_LEVEL) then
@@ -226,7 +230,6 @@ local function beat_sec() return 60 / clock.get_tempo() end
 
 local function update_tap(i)
     local feel = params:get("fx_ll_feel_"..i)
-    -- time div only modulates note-feel taps, tap time only msec taps
     if tm_active() and turing.target == TARGET.TIME_DIV and feel ~= 4 then return end
     if tm_active() and turing.target == TARGET.TAP_TIME and feel == 4 then return end
     local t
@@ -252,7 +255,8 @@ local function tm_timediv()
         if feel == 4 then
             send("time"..i, base["time"..i])
         else
-            local rot = ((turing.register >> i) | (turing.register << (turing.steps - i))) & m
+            local r = i % turing.steps
+            local rot = ((turing.register >> r) | (turing.register << (turing.steps - r))) & m
             local rng = turing.range_high - turing.range_low + 1
             local sd = rng <= 0 and turing.range_low or (turing.range_low + (rot % rng))
             send("time"..i, math.min(timediv_beats[sd] * beat_sec() * feel_mults[feel], MAX_DELAY))
@@ -266,7 +270,7 @@ local function restore(t)
     elseif t == TARGET.FILTER_FREQ then
         send("filterFreqBottom", base.filterFreqBottom)
         send("filterFreqTop", base.filterFreqTop)
-    elseif t == TARGET.FILTER_RES then send("resonance", base.resonance)
+    elseif t == TARGET.FILTER_RES then send("resonance", res_to_rq(base.resonance))
     elseif t == TARGET.CROSSFEED then send("crossfeed", base.crossfeed)
     elseif t == TARGET.TAP_FEEDBACK then for i=1,4 do send("feedback"..i, base["feedback"..i]) end
     elseif t == TARGET.TAP_LEVEL then for i=1,4 do send("level"..i, base["level"..i]) end
@@ -295,7 +299,7 @@ local function tm_apply()
     elseif t == TARGET.FILTER_FREQ then
         send("filterFreqBottom", apply_mod(raw, base.filterFreqBottom, 20, 20000))
         send("filterFreqTop", apply_mod(raw, base.filterFreqTop, 20, 20000))
-    elseif t == TARGET.FILTER_RES then send("resonance", apply_mod(raw, base.resonance, 0.01, 1.0))
+    elseif t == TARGET.FILTER_RES then send("resonance", res_to_rq(apply_mod(raw, base.resonance, 0, 100)))
     elseif t == TARGET.CROSSFEED then send("crossfeed", apply_mod(raw, base.crossfeed, 0, 1))
     elseif t == TARGET.TAP_FEEDBACK then
         for i=1,4 do send("feedback"..i, apply_mod(tap_mod(i), base["feedback"..i], 0, FEEDBACK_MAX)) end
@@ -314,7 +318,6 @@ local function tm_step()
     local m = reg_max()
     local msb = (turing.register >> (turing.steps - 1)) & 1
     turing.register = (turing.register << 1) & m
-    -- 100% = always copy (locked), 0% = always flip (random)
     if math.random(100) > turing.stability then
         turing.register = turing.register | (1 - msb)
     else turing.register = turing.register | msb end
@@ -339,7 +342,7 @@ local function evt_do()
     elseif a == 3 then for i=1,4 do send("feedback"..i, 0) end
     elseif a == 4 then for i=1,4 do send("bal"..i, -base["bal"..i]) end
     elseif a == 5 then
-        for i=1,4 do send("level"..i, (100 - params:get("fx_ll_level_"..i)) / 100) end
+        for i=1,4 do send("level"..i, 1 - base["level"..i]) end
     elseif a == 6 then send("inputGain", 0)
     elseif a == 7 then for i=1,4 do send("level"..i, 0) end
     elseif stab_reduce[a] then
@@ -363,7 +366,6 @@ local function evt_undo()
     send("slew", params:get("fx_ll_tm_slew_rate") / 1000)
 end
 
--- forward-declared: coroutine restarts itself on reset
 local start_evt_clock
 
 start_evt_clock = function()
@@ -408,14 +410,6 @@ local function start_tempo_watch()
             if t ~= last_tempo then
                 last_tempo = t
                 if tm_active() and turing.target == TARGET.TIME_DIV then tm_timediv()
-                elseif tm_active() and turing.target == TARGET.TAP_TIME then
-                    for i=1,4 do
-                        local feel = params:get("fx_ll_feel_"..i)
-                        if feel ~= 4 then
-                            base["time"..i] = math.min(
-                                timediv_beats[params:get("fx_ll_timediv_"..i)] * beat_sec() * feel_mults[feel], MAX_DELAY)
-                        end
-                    end
                 else update_all_taps() end
             end
         end
@@ -489,6 +483,11 @@ local function tm_activate()
     start_tm_clock()
 end
 
+local function tm_retarget()
+    mark_modulated(turing.target)
+    start_tm_clock()
+end
+
 local function tm_deactivate()
     restore(turing.target)
     if tm_clock_id then clock.cancel(tm_clock_id); tm_clock_id = nil end
@@ -501,17 +500,6 @@ end
 function FxLlll:add_params()
 
     params:add_separator("fx_ll", "fx llll")
-    -- slot management (see README 2.1):
-    -- send a / send b: route directly to the norns send buses, independent of the
-    --   insert replacer synth. no drywet parameter involved.
-    -- insert: equal power crossfade — dry = cos(drywet·π/2), wet = sin(drywet·π/2).
-    --   at drywet=1, cos(π/2)=0 exactly, so no dry signal leaks through at full wet.
-    -- click-free switching: the fx send level is faded to 0 (≈20 ms) before the
-    --   new slot is armed, preventing audible clicks from abrupt bus-gain changes.
-    -- spillover: on slot deselect the send input is muted (faded); the delay lines
-    --   keep running freely. trails ring out for as long as the current delay time
-    --   and feedback dictate — potentially many seconds. the send stays muted until
-    --   a new slot is selected.
     FxLlll:add_slot("fx_ll_slot", "slot")
 
     params:add_trigger("fx_ll_init", "initialize")
@@ -524,7 +512,6 @@ function FxLlll:add_params()
         end
     end)
 
-    -- taps --
     params:add_separator("fx_ll_taps", "taps")
 
     params:add_number("fx_ll_active_taps", "active taps", 1, 4, 1)
@@ -571,7 +558,6 @@ function FxLlll:add_params()
         params:set_action("fx_ll_timediv_"..i, function() update_tap(i) end)
     end
 
-    -- filter --
     params:add_separator("fx_ll_flt", "filter")
 
     params:add_option("fx_ll_filter_type", "filter type", filter_type_names, 1)
@@ -599,9 +585,8 @@ function FxLlll:add_params()
 
     params:add_number("fx_ll_resonance", "resonance", 0, 100, 0, fmt_pct)
     params:set_action("fx_ll_resonance", function(v)
-        local rq = 10 ^ (-((v / 100) ^ 3) * 2)
-        base.resonance = rq
-        if not (tm_active() and turing.target == TARGET.FILTER_RES) then send("resonance", rq) end
+        base.resonance = v
+        if not (tm_active() and turing.target == TARGET.FILTER_RES) then send("resonance", res_to_rq(v)) end
     end)
 
     params:add_option("fx_ll_filter_slope", "slope", filter_slope_names, 2)
@@ -610,7 +595,6 @@ function FxLlll:add_params()
         vis_filter()
     end)
 
-    -- saturation --
     params:add_separator("fx_ll_sat", "saturation")
 
     params:add_number("fx_ll_saturation", "saturation", 0, 100, 0, fmt_pct)
@@ -619,7 +603,6 @@ function FxLlll:add_params()
         if not (tm_active() and turing.target == TARGET.SATURATION) then send("saturation", v / 100) end
     end)
 
-    -- chorus --
     params:add_separator("fx_ll_ch", "chorus")
 
     params:add_number("fx_ll_chorus_depth", "depth", 0, 100, 0, fmt_pct)
@@ -635,7 +618,6 @@ function FxLlll:add_params()
         if not (tm_active() and turing.target == TARGET.CHORUS_RATE) then send("chorusRate", v) end
     end)
 
-    -- crossfeed --
     params:add_separator("fx_ll_xf", "crossfeed")
 
     params:add_number("fx_ll_crossfeed", "crossfeed", 0, 100, 0, fmt_pct)
@@ -644,7 +626,6 @@ function FxLlll:add_params()
         if not (tm_active() and turing.target == TARGET.CROSSFEED) then send("crossfeed", v / 100) end
     end)
 
-    -- modulation TM --
     params:add_separator("fx_ll_tm", "modulation TM")
 
     params:add_option("fx_ll_tm_mod_target", "assign target", target_names, TARGET.TIME_DIV)
@@ -652,7 +633,7 @@ function FxLlll:add_params()
         if tm_active() then restore(turing.prev_target) end
         turing.prev_target = v; turing.target = v
         vis_tm()
-        if tm_active() then tm_activate() end
+        if tm_active() then tm_retarget() end
     end)
 
     params:add_option("fx_ll_tm_mod_bottom", "mod bottom", timediv_names, 3)
@@ -708,7 +689,6 @@ function FxLlll:add_params()
         end
     end)
 
-    -- every x/y do z --
     params:add_separator("fx_ll_evt", "every x/y do z")
 
     params:add_option("fx_ll_evt_action", "assign target", event_action_names, 1)
@@ -737,14 +717,13 @@ function FxLlll:add_params()
 
     params:add_option("fx_ll_evt_reset", "reset after", reset_names, 1)
     params:set_action("fx_ll_evt_reset", function(v)
-        event_state.reset_after = v == 1 and 0 or v
+        event_state.reset_after = v == 1 and 0 or (v - 1)
         event_state.toggle_count = 0
     end)
 
     params:add_number("fx_ll_evt_slew_rate", "slew rate", 0, 2000, 0, fmt_ms)
     params:set_action("fx_ll_evt_slew_rate", function(v) event_state.slew = v end)
 
-    -- marker maps --
     target_param_ids[TARGET.CHORUS_DEPTH] = {"fx_ll_chorus_depth"}
     target_param_ids[TARGET.CHORUS_RATE] = {"fx_ll_chorus_rate"}
     target_param_ids[TARGET.CROSSFEED] = {"fx_ll_crossfeed"}

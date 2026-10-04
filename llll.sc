@@ -1,8 +1,5 @@
-// FxLlll — see README.md for signal flow, parameters, and design notes
-
 FxLlll : FxBase {
 
-    // defaults must match Lua base state
     *new {
         var ret = super.newCopyArgs(nil, \none, (
             time1: 0.5, time2: 0.25, time3: 0.125, time4: 0.0625,
@@ -29,7 +26,7 @@ FxLlll : FxBase {
     addSynthdefs {
         SynthDef(\fxLlll, {|inBus, outBus|
             var input, fb, source, slew, pGlide;
-            var tap1, tap2, tap3, tap4, active;
+            var tap1, tap2, tap3, tap4, active, mask2, mask3, mask4;
             var xfeed, m1, m2, m3, m4;
             var b1, b2, b3, b4;
             var l1, l2, l3, l4, fb1, fb2, fb3, fb4;
@@ -52,21 +49,22 @@ FxLlll : FxBase {
             tap4 = DelayC.ar(source, 1, \time4.kr(0.0625).lag(pGlide));
 
             // ---- ACTIVE TAPS ----
-            // BinaryOpUGen: 0 or 1, no branch
             active = \activeTaps.kr(1);
-            tap2 = tap2 * (active >= 2);
-            tap3 = tap3 * (active >= 3);
-            tap4 = tap4 * (active >= 4);
+            mask2 = (active >= 2).lag(0.02);
+            mask3 = (active >= 3).lag(0.02);
+            mask4 = (active >= 4).lag(0.02);
+            tap2 = tap2 * mask2;
+            tap3 = tap3 * mask3;
+            tap4 = tap4 * mask4;
 
             // ---- CROSSFEED ----
             xfeed = \crossfeed.kr(0).lag(slew);
             m1 = tap1 + (tap3 * xfeed);
             m2 = tap2 + (tap4 * xfeed);
-            m3 = tap3 + (tap1 * xfeed);
-            m4 = tap4 + (tap2 * xfeed);
+            m3 = (tap3 + (tap1 * xfeed)) * mask3;
+            m4 = (tap4 + (tap2 * xfeed)) * mask4;
 
             // ---- BALANCE ----
-            // computed once, used by both output and feedback sums
             b1 = Balance2.ar(m1[0], m1[1], \bal1.kr(0.0).lag(slew));
             b2 = Balance2.ar(m2[0], m2[1], \bal2.kr(0.0).lag(slew));
             b3 = Balance2.ar(m3[0], m3[1], \bal3.kr(0.0).lag(slew));
@@ -89,12 +87,10 @@ FxLlll : FxBase {
             fTop = \filterFreqTop.kr(2500).lag(slew);
             rq = \resonance.kr(1.0).lag(slew);
 
-            // 6 dB: OnePole (no rq support)
             bpC1 = (-2pi * (fBot / SampleRate.ir)).exp;
             bpC2 = (-2pi * (fTop / SampleRate.ir)).exp;
             bp6 = OnePole.ar(outSum - OnePole.ar(outSum, bpC1), bpC2);
 
-            // 12–48 dB: cascaded RLPF/RHPF
             bp12 = RLPF.ar(RHPF.ar(outSum, fBot, rq), fTop, rq);
             bp24 = RLPF.ar(RHPF.ar(bp12, fBot, rq), fTop, rq);
             bp36 = RLPF.ar(RHPF.ar(bp24, fBot, rq), fTop, rq);
@@ -111,7 +107,7 @@ FxLlll : FxBase {
             chDel = (0.005 + chMod).max(0.0001);
             chorused = XFade2.ar(saturated, DelayC.ar(saturated, 0.01, chDel), chMix * 2 - 1);
 
-            Out.ar(outBus, chorused);
+            ReplaceOut.ar(outBus, Limiter.ar(chorused, 0.95, 0.01) + (In.ar(outBus, 2) * (outBus < Server.default.options.numOutputBusChannels)));
 
             // ---- FEEDBACK PATH ----
             fbSum = (b1*fb1) + (b2*fb2) + (b3*fb3) + (b4*fb4);
